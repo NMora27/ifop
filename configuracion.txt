@@ -1,0 +1,57 @@
+# ============================================================
+# CONFIGURACIÓN GENERAL
+ANIO=2025
+ESPECIE=BACALAO DE PROFUNDIDAD
+ESPECIE_CODIGO=37
+SEXO=Machos
+ZONA=Palangre
+AREA=área sur austral
+FLOTA_DESEMBARQUE=Palangre Fábrica
+EJECUTAR_BPPALS=SI
+DIRECTORIO_TABLAS=Tablas
+
+# ============================================================
+# ANÁLISIS COLOCAP
+ARCHIVO_RESUMEN=E_Resumen.DBF
+ARCHIVO_TALLAS=ET_Estructura_de_Tallas.DBF
+ARCHIVO_SEXUAL=ET_Proporción_Sexual.DBF
+SALIDA_COLOCAP={DIRECTORIO_TABLAS}/{ANIO}_Bp_Analisis_Colocap.xlsx
+NOMBRE_HOJA_COLOCAP=Industrial (Palangre)_{ANIO}
+TITULO_HOJA_COLOCAP=A Colocap {ANIO} Industrial
+TITULO_BLOQUE_COLOCAP=COLOCAP 2023_SP37
+PESQUERIA_COLOCAP=1
+TALLA_COLOCAP_MIN=40
+TALLA_COLOCAP_MAX=250
+PASO_TALLA_COLOCAP=5
+FILA_TOTALES_COLOCAP=56
+
+# ============================================================
+# REGRESIÓN LONGITUD-PESO
+ARCHIVO_PALANGRE=Palangre_{ANIO}.csv
+SALIDA_PREPROCESAMIENTO={DIRECTORIO_TABLAS}/bacalao_filtrado.csv
+SALIDA_REGRESIONES={DIRECTORIO_TABLAS}/resultados_regresiones.csv
+DIRECTORIO_GRAFICOS=Graficos
+SALIDA_IQR_AMBOS={DIRECTORIO_TABLAS}/bacalao_filtrado_iqr.csv
+SALIDA_IQR_MACHOS={DIRECTORIO_TABLAS}/bacalao_machos_filtrado_iqr.csv
+SALIDA_IQR_HEMBRAS={DIRECTORIO_TABLAS}/bacalao_hembras_filtrado_iqr.csv
+LATITUD_ZONA_1=-41.28
+LATITUD_ZONA_2=-47
+
+# ============================================================
+# MATRIZ TALLA-EDAD
+ARCHIVO_TALLA_EDAD=Unido_Bacalao_de_profundidad_{ANIO}.xlsx
+SALIDA_MATRIZ={DIRECTORIO_TABLAS}/matriz_talla_edad_pesqueria25.xlsx
+PESQUERIA_TALLA_EDAD=25
+PASO_TALLA_MATRIZ=5
+EDAD_AGRUPADA=40
+
+# ============================================================
+# BPPALS
+RUTA_DESEMBARQUE=Desembarque {ANIO} industr para inf final EDAD.xlsx
+SALIDA_BPPALS_MACHOS={DIRECTORIO_TABLAS}/BPPALSM{ANIO}_generado.xlsx
+SALIDA_BPPALS_HEMBRAS={DIRECTORIO_TABLAS}/BPPALSH{ANIO}_generado.xlsx
+TALLA_MIN=40
+TALLA_MAX=249
+PASO_TALLA=5
+EDAD_MIN=4
+EDAD_MAX=40
