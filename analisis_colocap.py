@@ -20,11 +20,6 @@ def generar_analisis_colocap(archivo_resumen, archivo_tallas, archivo_sexual, sa
     ruta_tal = Path(archivo_tallas)
     ruta_sex = Path(archivo_sexual)
 
-    print(" DBF localizados:")
-    print(f"   {ruta_res.name}")
-    print(f"   {ruta_tal.name}")
-    print(f"   {ruta_sex.name}")
-
     df_res = leer_dbf(ruta_res)
     df_tal = leer_dbf(ruta_tal)
     df_sex = leer_dbf(ruta_sex)
@@ -41,11 +36,6 @@ def generar_analisis_colocap(archivo_resumen, archivo_tallas, archivo_sexual, sa
                       (df_sex["ESCALA"] == "Anual") &
                       (df_sex["ESPECIE"] == especie) &
                       (df_sex["SEXO"].isin([1, 2]))].copy()
-
-    print("\n Registros filtrados:")
-    print(f"   Resumen (ZONA, esp={especie}): {len(df_res_zona)}")
-    print(f"   Tallas (Total/A, sexo 1,2, esp={especie}): {len(df_tal_f)}")
-    print(f"   Sexual (Total/A, sexo 1,2, esp={especie}): {len(df_sex_f)}")
 
     if df_tal_f.empty:
         raise SystemExit("Tallas quedó vacío. Revisa AGRUPACION/ESCALA/SEXO.")
@@ -70,15 +60,8 @@ def generar_analisis_colocap(archivo_resumen, archivo_tallas, archivo_sexual, sa
         p2 = float(sub.loc[sub["SEXO"] == 2, "PROPORCION"].sum())
         filas_bins.append((int(b), p1, p2))
 
-    print(f"\n   Tallas: {len(tal)} filas")
-    print(f"   Bins de {paso_talla} cm: {len(filas_bins)}")
-    print(f"   Proporción sexo 1: {prop_sex1:.6f}")
-    print(f"   Proporción sexo 2: {prop_sex2:.6f}")
-    print(f"   N° ejemplares: {n_ejemp}")
-
     # ----------------------------
     # 5. ESCRITURA EXCEL
-    print("\n Generando Excel...")
     salida.parent.mkdir(parents=True, exist_ok=True)
 
     with pd.ExcelWriter(salida, engine="xlsxwriter") as writer:
@@ -241,5 +224,5 @@ def generar_analisis_colocap(archivo_resumen, archivo_tallas, archivo_sexual, sa
         ws_meta.set_column("A:A", 22)
         ws_meta.set_column("B:B", 70)
 
-    print(f"\n Excel generado: {salida}")
+    print(f"Archivo generado: {salida}")
     return salida

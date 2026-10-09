@@ -71,10 +71,6 @@ def main(archivo_configuracion=None):
     anio = leer_entero(configuracion, "ANIO")
     ejecutar_bppals = leer_booleano(configuracion, "EJECUTAR_BPPALS")
 
-    print("\n================[ AUTOMATIZACIÓN BACALAO ]================")
-    print(f"Año: {anio}")
-
-    print("\n===============[ ANÁLISIS COLOCAP ]===============")
     salida_colocap = generar_analisis_colocap(
         archivo_resumen=resolver_ruta(base, configuracion["ARCHIVO_RESUMEN"]),
         archivo_tallas=resolver_ruta(base, configuracion["ARCHIVO_TALLAS"]),
@@ -90,7 +86,6 @@ def main(archivo_configuracion=None):
         paso_talla=leer_entero(configuracion, "PASO_TALLA_COLOCAP"),
         fila_totales=leer_entero(configuracion, "FILA_TOTALES_COLOCAP"))
 
-    print("\n===========[ REGRESIÓN LONGITUD-PESO ]===========")
     salida_regresiones = generar_regresiones_bacalao(
         archivo=resolver_ruta(base, configuracion["ARCHIVO_PALANGRE"]),
         especie=leer_entero(configuracion, "ESPECIE_CODIGO"),
@@ -103,7 +98,6 @@ def main(archivo_configuracion=None):
         salida_iqr_machos=resolver_ruta(base, configuracion["SALIDA_IQR_MACHOS"]),
         salida_iqr_hembras=resolver_ruta(base, configuracion["SALIDA_IQR_HEMBRAS"]))
 
-    print("\n=================[ MATRIZ TALLA-EDAD ]=================")
     salida_matriz = generar_matriz_talla_edad(
         archivo=resolver_ruta(base, configuracion["ARCHIVO_TALLA_EDAD"]),
         salida=resolver_ruta(base, configuracion["SALIDA_MATRIZ"]),
@@ -112,7 +106,6 @@ def main(archivo_configuracion=None):
         edad_agrupada=leer_entero(configuracion, "EDAD_AGRUPADA"))
 
     if ejecutar_bppals:
-        print("\n=======================[ BPPALS ]=======================")
         generar_bppals(
             especie=configuracion["ESPECIE"], sexo=configuracion["SEXO"], anio=anio,
             zona=configuracion["ZONA"], area=configuracion["AREA"],
@@ -128,13 +121,6 @@ def main(archivo_configuracion=None):
             edad_min=leer_entero(configuracion, "EDAD_MIN"),
             edad_max=leer_entero(configuracion, "EDAD_MAX"),
             hoja_colocap=configuracion["NOMBRE_HOJA_COLOCAP"])
-
-    print("\n===================[ PROCESO FINALIZADO ]===================")
-    print("Colocap, regresiones y matriz talla-edad fueron actualizados.")
-
-    if ejecutar_bppals:
-        print(f"BPPALS fue generado para: {configuracion['SEXO']}.")
-
 
 if __name__ == "__main__":
     main()

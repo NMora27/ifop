@@ -30,14 +30,9 @@ def generar_matriz_talla_edad(archivo, salida, pesqueria, paso_talla, edad_agrup
     salida = Path(salida)
     columnas = ["LONGITUD_DEL_PEZ_(CM)", "Nº_DE_ANILLOS", "CÓDIGO_DE_PESQUERÍA", "SEXO"]
 
-    print("\n" * 2, "=================== [ CLAVE PESO-TALLA ] =================== \n")
-
     # --------------------------------------------------
     # LECTURA
     datos = leer_datos_talla_edad(archivo, columnas)
-
-    print("======================[ Datos originales ]======================")
-    print(f"Registros leídos: {len(datos)}")
 
     # --------------------------------------------------
     # FILTROS
@@ -48,23 +43,10 @@ def generar_matriz_talla_edad(archivo, salida, pesqueria, paso_talla, edad_agrup
     datos.loc[datos["Nº_DE_ANILLOS"] >= edad_agrupada,
               "GRUPO_EDAD"] = f"{edad_agrupada}+"
 
-    print("\n======================[ Después de filtros ]======================")
-    print(f"Total   : {len(datos)}")
-    print(f"Machos  : {(datos['SEXO'] == 1).sum()}")
-    print(f"Hembras : {(datos['SEXO'] == 2).sum()}")
-
     # --------------------------------------------------
     # APLICAR LIMPIEZA IQR
-    print("\n======================[ LIMPIEZA IQR ]======================")
     datos, resumen_iqr = filtrar_outliers_iqr_por_sexo_edad(
         datos, columna="LONGITUD_DEL_PEZ_(CM)")
-
-    for sexo, inicial, eliminados, final in resumen_iqr:
-        nombre = "Machos" if sexo == 1 else "Hembras"
-        print(f"\n{nombre}")
-        print(f"Registros iniciales: {inicial}")
-        print(f"Outliers eliminados: {eliminados}")
-        print(f"Registros finales  : {final}")
 
     # --------------------------------------------------
     # AGRUPAR TALLAS DE 5 EN 5
@@ -76,11 +58,6 @@ def generar_matriz_talla_edad(archivo, salida, pesqueria, paso_talla, edad_agrup
     hembras = datos[datos["SEXO"] == 2].copy()
     matriz_machos = crear_matriz(machos, edad_agrupada)
     matriz_hembras = crear_matriz(hembras, edad_agrupada)
-
-    print("\n======================[ Datos finales IQR ]======================")
-    print(f"Machos  : {len(machos)}")
-    print(f"Hembras : {len(hembras)}")
-    print(f"Total   : {len(datos)}")
 
     # --------------------------------------------------
     # EXPORTAR MATRICES A EXCEL
@@ -112,5 +89,5 @@ def generar_matriz_talla_edad(archivo, salida, pesqueria, paso_talla, edad_agrup
                 celda.alignment = Alignment(horizontal="center", vertical="center")
 
     libro.save(salida)
-    print(f"\nArchivo generado: {salida}")
+    print(f"Archivo generado: {salida}")
     return salida

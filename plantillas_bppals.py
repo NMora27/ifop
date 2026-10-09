@@ -4,7 +4,7 @@ from gzip import decompress
 from io import BytesIO
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from xml.etree import ElementTree
+import re
 from zipfile import ZIP_DEFLATED, ZipFile
 
 _PLANTILLAS = {
@@ -6248,19 +6248,18 @@ def cargar_plantilla_bppals(sexo):
     return BytesIO(obtener_plantilla_bppals(sexo))
 
 def reemplazar_datos_hoja(original, actualizado):
-    espacio = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
-    raiz_original = ElementTree.fromstring(original)
-    raiz_actualizada = ElementTree.fromstring(actualizado)
-    datos_originales = raiz_original.find(f"{espacio}sheetData")
-    datos_actualizados = raiz_actualizada.find(f"{espacio}sheetData")
+    patron = re.compile(rb"<sheetData(?:\s[^>]*)?>.*?</sheetData>", re.DOTALL)
+    datos_actualizados = patron.search(actualizado)
 
-    if datos_originales is None or datos_actualizados is None:
+    if datos_actualizados is None:
         return actualizado
 
-    posicion = list(raiz_original).index(datos_originales)
-    raiz_original.remove(datos_originales)
-    raiz_original.insert(posicion, datos_actualizados)
-    return ElementTree.tostring(raiz_original, encoding="utf-8", xml_declaration=True)
+    return patron.sub(datos_actualizados.group(0), original, count=1)
+
+def activar_recalculo(libro):
+    patron = re.compile(rb"<calcPr[^>]*/>")
+    calculo = b'<calcPr calcId="191028" calcMode="auto" fullCalcOnLoad="1" forceFullCalc="1"/>'
+    return patron.sub(calculo, libro, count=1)
 
 def guardar_bppals_con_diseno(libro, sexo, salida):
     salida = Path(salida)
@@ -6277,6 +6276,6 @@ def guardar_bppals_con_diseno(libro, sexo, salida):
                    archivo.filename.endswith(".xml"):
                     datos = reemplazar_datos_hoja(datos, actualizado.read(archivo.filename))
                 elif archivo.filename == "xl/workbook.xml":
-                    datos = actualizado.read(archivo.filename)
+                    datos = activar_recalculo(datos)
 
                 destino.writestr(archivo, datos)
