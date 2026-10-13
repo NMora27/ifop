@@ -5,6 +5,8 @@ from io import BytesIO
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 import re
+from copy import deepcopy
+from xml.etree import ElementTree
 from zipfile import ZIP_DEFLATED, ZipFile
 
 _PLANTILLAS = {
@@ -6247,14 +6249,99 @@ def obtener_plantilla_bppals(sexo):
 def cargar_plantilla_bppals(sexo):
     return BytesIO(obtener_plantilla_bppals(sexo))
 
-def reemplazar_datos_hoja(original, actualizado):
-    patron = re.compile(rb"<sheetData(?:\s[^>]*)?>.*?</sheetData>", re.DOTALL)
-    datos_actualizados = patron.search(actualizado)
+ESPACIO_HOJAS = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+ElementTree.register_namespace("", ESPACIO_HOJAS)
 
-    if datos_actualizados is None:
+
+def _obtener_datos_hoja(contenido):
+    patron = re.compile(rb"<sheetData(?:\s[^>]*)?>.*?</sheetData>", re.DOTALL)
+    return patron.search(contenido)
+
+
+def _conservar_estilos_de_plantilla(datos_originales, datos_actualizados):
+    """Actualiza el contenido de una hoja sin sustituir los estilos existentes.
+
+    openpyxl conserva el diseño al editar el libro, pero al guardar puede
+    reasignar algunos identificadores de estilo. Como el archivo final vuelve
+    a utilizar los recursos de la plantilla, cada celda que ya existía debe
+    mantener su identificador de estilo original para conservar su fuente,
+    formato numérico, bordes y alineación.
+    """
+    envoltura = b'<raiz xmlns="' + ESPACIO_HOJAS.encode() + b'">%s</raiz>'
+    raiz_original = ElementTree.fromstring(envoltura % datos_originales)
+    raiz_actualizada = ElementTree.fromstring(envoltura % datos_actualizados)
+    hoja_original = raiz_original[0]
+    hoja_actualizada = raiz_actualizada[0]
+
+    etiqueta_celda = f"{{{ESPACIO_HOJAS}}}c"
+    etiqueta_fila = f"{{{ESPACIO_HOJAS}}}row"
+    celdas_actualizadas = {
+        celda.attrib["r"]: celda
+        for celda in hoja_actualizada.iter(etiqueta_celda)
+        if "r" in celda.attrib
+    }
+    referencias_originales = set()
+
+    for celda_original in hoja_original.iter(etiqueta_celda):
+        referencia = celda_original.attrib.get("r")
+        if not referencia:
+            continue
+
+        referencias_originales.add(referencia)
+        celda_actualizada = celdas_actualizadas.get(referencia)
+        if celda_actualizada is None:
+            continue
+
+        estilo = celda_original.attrib.get("s")
+        celda_original.attrib.clear()
+        celda_original.attrib["r"] = referencia
+        if estilo is not None:
+            celda_original.attrib["s"] = estilo
+
+        for atributo, valor in celda_actualizada.attrib.items():
+            if atributo not in {"r", "s"}:
+                celda_original.attrib[atributo] = valor
+
+        celda_original[:] = [deepcopy(hijo) for hijo in celda_actualizada]
+        celda_original.text = celda_actualizada.text
+
+    # Las celdas nuevas no estaban en el diseño de referencia, por lo que se
+    # añaden sólo si el proceso las requiere. Las existentes conservan siempre
+    # el estilo original de la plantilla.
+    filas_originales = {
+        fila.attrib.get("r"): fila
+        for fila in hoja_original.findall(etiqueta_fila)
+    }
+    for fila_actualizada in hoja_actualizada.findall(etiqueta_fila):
+        numero_fila = fila_actualizada.attrib.get("r")
+        fila_original = filas_originales.get(numero_fila)
+        if fila_original is None:
+            hoja_original.append(deepcopy(fila_actualizada))
+            continue
+
+        for celda_actualizada in fila_actualizada.findall(etiqueta_celda):
+            referencia = celda_actualizada.attrib.get("r")
+            if referencia not in referencias_originales:
+                fila_original.append(deepcopy(celda_actualizada))
+
+    datos = ElementTree.tostring(hoja_original, encoding="utf-8")
+    # El fragmento se inserta dentro de una hoja que ya declara este espacio
+    # de nombres; se elimina la declaración redundante para mantener el XML
+    # de la plantilla lo más intacto posible.
+    declaracion = b' xmlns="' + ESPACIO_HOJAS.encode() + b'"'
+    return datos.replace(declaracion, b"", 1)
+
+
+def reemplazar_datos_hoja(original, actualizado):
+    datos_originales = _obtener_datos_hoja(original)
+    datos_actualizados = _obtener_datos_hoja(actualizado)
+
+    if datos_originales is None or datos_actualizados is None:
         return actualizado
 
-    return patron.sub(datos_actualizados.group(0), original, count=1)
+    datos_con_estilos = _conservar_estilos_de_plantilla(
+        datos_originales.group(0), datos_actualizados.group(0))
+    return original[:datos_originales.start()] + datos_con_estilos + original[datos_originales.end():]
 
 def activar_recalculo(libro):
     patron = re.compile(rb"<calcPr[^>]*/>")

@@ -1,7 +1,7 @@
 from pathlib import Path
 
 import pandas as pd
-from lectura import leer_csv_palangre
+from lectura import leer_excel_palangre
 from metodos_matematicos import (
     ajustar_regresion_longpeso,
     aplicar_outliers_longpeso,
@@ -34,7 +34,7 @@ def guardar_dataframe(datos, nombre_archivo):
 
 # ============================================================
 # PROCESO PRINCIPAL
-def generar_regresiones_bacalao(archivo, especie, latitud_zona_1, latitud_zona_2,
+def generar_regresiones_bacalao(archivo, anio, especie, latitud_zona_1, latitud_zona_2,
                                 directorio_graficos, salida_preprocesamiento,
                                 salida_regresiones, salida_iqr_ambos,
                                 salida_iqr_machos, salida_iqr_hembras):
@@ -51,7 +51,7 @@ def generar_regresiones_bacalao(archivo, especie, latitud_zona_1, latitud_zona_2
     # PREPROCESAMIENTO
     columnas = ["LATITUD", "ESPECIE_OBJETIVO_LANCE", "SEXO_ESPECIMEN",
                 "LONGITUD_ESPECIMEN", "PESO_ESPECIMEN"]
-    df, n_original = leer_csv_palangre(archivo, columnas)
+    df, _n_original = leer_excel_palangre(archivo, columnas, especie, anio)
 
     df["LATITUD"] = df["LATITUD"].apply(convertir_latitud)
     df["ZONA"] = 0

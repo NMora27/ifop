@@ -88,6 +88,7 @@ def main(archivo_configuracion=None):
 
     salida_regresiones = generar_regresiones_bacalao(
         archivo=resolver_ruta(base, configuracion["ARCHIVO_PALANGRE"]),
+        anio=anio,
         especie=leer_entero(configuracion, "ESPECIE_CODIGO"),
         latitud_zona_1=float(configuracion["LATITUD_ZONA_1"]),
         latitud_zona_2=float(configuracion["LATITUD_ZONA_2"]),

@@ -1,4 +1,5 @@
 import unicodedata
+import re
 from pathlib import Path
 
 import pandas as pd
@@ -83,9 +84,51 @@ def leer_dbf(ruta, encoding=None):
 
     return datos
 
-def leer_csv_palangre(archivo, columnas, encoding=None):
-    encoding = encoding or detectar_encoding_csv(archivo)
-    datos = pd.read_csv(archivo, sep=";", encoding=encoding)
+def extraer_tokens(valor):
+    texto = unicodedata.normalize("NFD", str(valor).upper())
+    texto = "".join(caracter for caracter in texto
+                    if unicodedata.category(caracter) != "Mn")
+    return re.findall(r"[A-Z]+|\d+", texto)
+
+def validar_archivo_palangre(archivo, anio):
+    archivo = Path(archivo)
+    anio = str(anio)
+    if not archivo.exists():
+        raise FileNotFoundError(f"No existe el archivo Palangre: {archivo}")
+    if archivo.suffix.lower() not in (".xlsx", ".xlsm"):
+        raise ValueError(
+            f"El archivo Palangre debe ser Excel (.xlsx o .xlsm): {archivo.name}")
+    if not {"PALANGRE", anio}.issubset(extraer_tokens(archivo.stem)):
+        raise ValueError(
+            f"El nombre '{archivo.name}' debe incluir Palangre y el año {anio}")
+
+    return archivo
+
+def leer_excel_palangre(archivo, columnas, especie, anio):
+    archivo = validar_archivo_palangre(archivo, anio)
+    codigo_especie = str(especie)
+    anio_corto = str(anio)[-2:]
+
+    with pd.ExcelFile(archivo) as libro:
+        hojas = [
+            hoja for hoja in libro.sheet_names
+            if codigo_especie in hoja.upper()
+            and "PAL" in hoja.upper()
+            and anio_corto in hoja
+        ]
+
+        if not hojas:
+            disponibles = ", ".join(libro.sheet_names)
+            raise ValueError(
+                f"No se encontró una hoja con {codigo_especie}, Pal y {anio_corto} "
+                f"en {archivo.name}. Hojas disponibles: {disponibles}")
+        if len(hojas) > 1:
+            raise ValueError(
+                f"Se encontraron varias hojas Palangre para especie {codigo_especie}: "
+                f"{', '.join(hojas)}")
+
+        datos = pd.read_excel(libro, sheet_name=hojas[0])
+
     n_original = len(datos)
     datos = datos[columnas].copy()
     datos["LONGITUD_ESPECIMEN"] = datos["LONGITUD_ESPECIMEN"].astype(float)

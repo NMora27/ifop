@@ -27,7 +27,8 @@ FILA_TOTALES_COLOCAP=56
 
 # ============================================================
 # REGRESIÓN LONGITUD-PESO
-ARCHIVO_PALANGRE=Palangre_{ANIO}.csv
+# Ruta del Excel Palangre. El nombre debe incluir Palangre y {ANIO}.
+ARCHIVO_PALANGRE=Palangre_{ANIO}.xlsx
 SALIDA_PREPROCESAMIENTO={DIRECTORIO_TABLAS}/bacalao_filtrado.csv
 SALIDA_REGRESIONES={DIRECTORIO_TABLAS}/resultados_regresiones.csv
 DIRECTORIO_GRAFICOS=Graficos
