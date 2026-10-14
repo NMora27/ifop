@@ -1,5 +1,5 @@
-import unicodedata
 import re
+import unicodedata
 from pathlib import Path
 
 import pandas as pd
@@ -110,12 +110,10 @@ def leer_excel_palangre(archivo, columnas, especie, anio):
     anio_corto = str(anio)[-2:]
 
     with pd.ExcelFile(archivo) as libro:
-        hojas = [
-            hoja for hoja in libro.sheet_names
-            if codigo_especie in hoja.upper()
-            and "PAL" in hoja.upper()
-            and anio_corto in hoja
-        ]
+        hojas = [hoja for hoja in libro.sheet_names
+                 if codigo_especie in hoja.upper()
+                 and "PAL" in hoja.upper()
+                 and anio_corto in hoja]
 
         if not hojas:
             disponibles = ", ".join(libro.sheet_names)

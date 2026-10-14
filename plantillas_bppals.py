@@ -6250,7 +6250,9 @@ def cargar_plantilla_bppals(sexo):
     return BytesIO(obtener_plantilla_bppals(sexo))
 
 ESPACIO_HOJAS = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+ESPACIO_X14AC = "http://schemas.microsoft.com/office/spreadsheetml/2009/9/ac"
 ElementTree.register_namespace("", ESPACIO_HOJAS)
+ElementTree.register_namespace("x14ac", ESPACIO_X14AC)
 
 
 def _obtener_datos_hoja(contenido):
@@ -6267,7 +6269,8 @@ def _conservar_estilos_de_plantilla(datos_originales, datos_actualizados):
     mantener su identificador de estilo original para conservar su fuente,
     formato numérico, bordes y alineación.
     """
-    envoltura = b'<raiz xmlns="' + ESPACIO_HOJAS.encode() + b'">%s</raiz>'
+    envoltura = (b'<raiz xmlns="' + ESPACIO_HOJAS.encode() +
+                 b'" xmlns:x14ac="' + ESPACIO_X14AC.encode() + b'">%s</raiz>')
     raiz_original = ElementTree.fromstring(envoltura % datos_originales)
     raiz_actualizada = ElementTree.fromstring(envoltura % datos_actualizados)
     hoja_original = raiz_original[0]

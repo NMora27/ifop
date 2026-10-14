@@ -136,6 +136,17 @@ def generar_bppals(especie, sexo, anio, zona, area, flota_desembarque, archivo_m
     wb.calculation.calcMode = "auto"
     wb.calculation.fullCalcOnLoad = True
     wb.calculation.forceFullCalc = True
+
+    # Filas de Colocap asociadas a cada marca de clase. Se reutilizan para la
+    # columna Verificación y la composición de captura.
+    filas_marcas = {}
+    for fila in range(FILA_COLOCAP_INICIO,FILA_COLOCAP_FIN + 1):
+        marca = ws_colocap.cell(fila,2).value
+
+        try:
+            filas_marcas[int(marca)] = fila
+        except (TypeError,ValueError):
+            continue
     
     
     # ============================================================
@@ -167,6 +178,8 @@ def generar_bppals(especie, sexo, anio, zona, area, flota_desembarque, archivo_m
     for fila in range(FILA_PROB_INICIO,FILA_PROB_PLANTILLA_FIN + 1):
         for columna in range(2,COL_EDAD_FIN + 1):
             ws_clave.cell(fila,columna).value = None
+
+    ws_clave["A74"] = "VERIFICACIÓN"
     
     # ------------------------------------------------------------
     # 5.3 CLAVE EDAD-TALLA
@@ -179,10 +192,20 @@ def generar_bppals(especie, sexo, anio, zona, area, flota_desembarque, archivo_m
     
     for i,talla in enumerate(tallas):
         fila = FILA_CLAVE_INICIO + i
+        marca_clase = talla + PASO_TALLA // 2
+        fila_colocap = filas_marcas.get(marca_clase)
+
+        if fila_colocap is None:
+            raise ValueError(
+                f"No se encontró la marca de clase {marca_clase} en Colocap")
     
         ws_clave.cell(fila,2).value = talla
         ws_clave.cell(fila,3).value = "-"
         ws_clave.cell(fila,4).value = talla + PASO_TALLA - 1
+
+        columna_sexo = "D" if SEXO == "Hembras" else "C"
+        ws_clave.cell(fila,1).value = \
+            f'=IF(Colocap!{columna_sexo}{fila_colocap}>0,IF(Clave!F{fila}>0,"CL OK","FALTA CL")," ")'
     
         for edad in range(EDAD_MIN,EDAD_MAX):
             columna = COL_EDAD_INICIO + (edad - EDAD_MIN)
@@ -306,21 +329,7 @@ def generar_bppals(especie, sexo, anio, zona, area, flota_desembarque, archivo_m
         ws_comp.cell(7,col_comp).value = f"=Clave!{letra_clave}74"
     
     # ------------------------------------------------------------
-    # 7.4 RELACIÓN MARCA DE CLASE - COLOCAP
-    filas_marcas = {}
-    
-    for fila in range(FILA_COLOCAP_INICIO,FILA_COLOCAP_FIN + 1):
-        marca = ws_colocap.cell(fila,2).value
-    
-        try:
-            marca = int(marca)
-        except (TypeError,ValueError):
-            continue
-    
-        filas_marcas[marca] = fila
-    
-    # ------------------------------------------------------------
-    # 7.5 COMPOSICIÓN DE CAPTURA
+    # 7.4 COMPOSICIÓN DE CAPTURA
     
     col_frec = "D" if SEXO == "Hembras" else "C"
     celda_numero = "$F$6" if SEXO == "Hembras" else "$E$6"
