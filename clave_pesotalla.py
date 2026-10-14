@@ -37,7 +37,8 @@ def generar_matriz_talla_edad(archivo, salida, pesqueria, paso_talla, edad_agrup
     # --------------------------------------------------
     # FILTROS
     datos = datos[(datos["CÓDIGO_DE_PESQUERÍA"] == pesqueria) & (datos["SEXO"].isin([1, 2])) &
-                  (datos["Nº_DE_ANILLOS"] > 0) & (datos["LONGITUD_DEL_PEZ_(CM)"] > 0)].copy()
+                  (datos["Nº_DE_ANILLOS"] > 0) & (datos["LONGITUD_DEL_PEZ_(CM)"] > 0) &
+                  (datos["LONGITUD_DEL_PEZ_(CM)"] < 300)].copy()
     datos["Nº_DE_ANILLOS"] = datos["Nº_DE_ANILLOS"].astype(int)
     datos["GRUPO_EDAD"] = datos["Nº_DE_ANILLOS"].astype(str)
     datos.loc[datos["Nº_DE_ANILLOS"] >= edad_agrupada,
