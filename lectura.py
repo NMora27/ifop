@@ -1,5 +1,5 @@
-import unicodedata
 import re
+import unicodedata
 from pathlib import Path
 
 import pandas as pd
@@ -110,12 +110,8 @@ def leer_excel_palangre(archivo, columnas, especie, anio):
     anio_corto = str(anio)[-2:]
 
     with pd.ExcelFile(archivo) as libro:
-        hojas = [
-            hoja for hoja in libro.sheet_names
-            if codigo_especie in hoja.upper()
-            and "PAL" in hoja.upper()
-            and anio_corto in hoja
-        ]
+        hojas = [hoja for hoja in libro.sheet_names
+                 if {codigo_especie, "PAL", anio_corto}.issubset(extraer_tokens(hoja))]
 
         if not hojas:
             disponibles = ", ".join(libro.sheet_names)
@@ -136,11 +132,12 @@ def leer_excel_palangre(archivo, columnas, especie, anio):
     return datos, n_original
 
 def leer_datos_talla_edad(archivo, columnas):
-    datos = pd.read_excel(archivo)
+    datos = pd.read_excel(archivo, sheet_name="Clave Edad-Talla")
     datos = datos[columnas].copy()
-
+    
     for col in columnas:
-        datos[col] = pd.to_numeric(datos[col], errors="coerce")
+        if col != "Pesqueria":
+            datos[col] = pd.to_numeric(datos[col], errors="coerce")
 
     return datos.dropna()
 

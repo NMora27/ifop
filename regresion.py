@@ -34,7 +34,7 @@ def guardar_dataframe(datos, nombre_archivo):
 
 # ============================================================
 # PROCESO PRINCIPAL
-def generar_regresiones_bacalao(archivo, anio, especie, latitud_zona_1, latitud_zona_2,
+def generar_regresiones(archivo, anio, especie, latitud_zona_1, latitud_zona_2,
                                 directorio_graficos, salida_preprocesamiento,
                                 salida_regresiones, salida_iqr_ambos,
                                 salida_iqr_machos, salida_iqr_hembras):
@@ -49,7 +49,7 @@ def generar_regresiones_bacalao(archivo, anio, especie, latitud_zona_1, latitud_
 
     # --------------------------------------------------
     # PREPROCESAMIENTO
-    columnas = ["LATITUD", "ESPECIE_OBJETIVO_LANCE", "SEXO_ESPECIMEN",
+    columnas = ["LATITUD", "COD_ESPECIE", "SEXO_ESPECIMEN",
                 "LONGITUD_ESPECIMEN", "PESO_ESPECIMEN"]
     df, _n_original = leer_excel_palangre(archivo, columnas, especie, anio)
 
@@ -58,7 +58,7 @@ def generar_regresiones_bacalao(archivo, anio, especie, latitud_zona_1, latitud_
     df.loc[(df["LATITUD"] <= latitud_zona_1) &
            (df["LATITUD"] > latitud_zona_2), "ZONA"] = 1
     df.loc[df["LATITUD"] <= latitud_zona_2, "ZONA"] = 2
-    df = df[(df["ESPECIE_OBJETIVO_LANCE"] == especie) &
+    df = df[(df["COD_ESPECIE"] == especie) &
             (df["SEXO_ESPECIMEN"].isin([1, 2])) &
             (df["LATITUD"] <= latitud_zona_2)]
 

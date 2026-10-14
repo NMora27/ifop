@@ -2,10 +2,11 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from lectura import leer_datos_talla_edad
-from metodos_matematicos import filtrar_outliers_iqr_por_sexo_edad
 from openpyxl import load_workbook
 from openpyxl.styles import Alignment
+
+from lectura import leer_datos_talla_edad
+from metodos_matematicos import filtrar_outliers_iqr_por_sexo_edad
 
 
 # ============================================================
@@ -28,7 +29,7 @@ def crear_matriz(datos, edad_agrupada):
 def generar_matriz_talla_edad(archivo, salida, pesqueria, paso_talla, edad_agrupada):
     archivo = Path(archivo)
     salida = Path(salida)
-    columnas = ["LONGITUD_DEL_PEZ_(CM)", "Nº_DE_ANILLOS", "CÓDIGO_DE_PESQUERÍA", "SEXO"]
+    columnas = ["Longitud", "N°Anillos", "Pesqueria", "Sexo"]
 
     # --------------------------------------------------
     # LECTURA
@@ -36,26 +37,27 @@ def generar_matriz_talla_edad(archivo, salida, pesqueria, paso_talla, edad_agrup
 
     # --------------------------------------------------
     # FILTROS
-    datos = datos[(datos["CÓDIGO_DE_PESQUERÍA"] == pesqueria) & (datos["SEXO"].isin([1, 2])) &
-                  (datos["Nº_DE_ANILLOS"] > 0) & (datos["LONGITUD_DEL_PEZ_(CM)"] > 0)].copy()
-    datos["Nº_DE_ANILLOS"] = datos["Nº_DE_ANILLOS"].astype(int)
-    datos["GRUPO_EDAD"] = datos["Nº_DE_ANILLOS"].astype(str)
-    datos.loc[datos["Nº_DE_ANILLOS"] >= edad_agrupada,
+    datos = datos[(datos["Pesqueria"] == pesqueria) & (datos["Sexo"].isin([1, 2])) &
+                  (datos["N°Anillos"] > 0) & (datos["Longitud"] > 0) &
+                  (datos["Longitud"] < 300)].copy()
+    datos["N°Anillos"] = datos["N°Anillos"].astype(int)
+    datos["GRUPO_EDAD"] = datos["N°Anillos"].astype(str)
+    datos.loc[datos["N°Anillos"] >= edad_agrupada,
               "GRUPO_EDAD"] = f"{edad_agrupada}+"
 
     # --------------------------------------------------
     # APLICAR LIMPIEZA IQR
-    datos, resumen_iqr = filtrar_outliers_iqr_por_sexo_edad(
-        datos, columna="LONGITUD_DEL_PEZ_(CM)")
+    datos, _resumen_iqr = filtrar_outliers_iqr_por_sexo_edad(
+        datos, columna="Longitud")
 
     # --------------------------------------------------
     # AGRUPAR TALLAS DE 5 EN 5
-    datos["GRUPO_TALLA"] = (np.floor(datos["LONGITUD_DEL_PEZ_(CM)"] / paso_talla) * paso_talla).astype(int)
+    datos["GRUPO_TALLA"] = (np.floor(datos["Longitud"] / paso_talla) * paso_talla).astype(int)
 
     # --------------------------------------------------
     # SEPARAR MACHOS Y HEMBRAS
-    machos = datos[datos["SEXO"] == 1].copy()
-    hembras = datos[datos["SEXO"] == 2].copy()
+    machos = datos[datos["Sexo"] == 1].copy()
+    hembras = datos[datos["Sexo"] == 2].copy()
     matriz_machos = crear_matriz(machos, edad_agrupada)
     matriz_hembras = crear_matriz(hembras, edad_agrupada)
 

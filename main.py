@@ -4,7 +4,7 @@ from pathlib import Path
 from analisis_colocap import generar_analisis_colocap
 from bppals_20XX import generar_bppals
 from clave_pesotalla import generar_matriz_talla_edad
-from regresion_bacalao import generar_regresiones_bacalao
+from regresion import generar_regresiones
 
 
 # ============================================================
@@ -50,6 +50,8 @@ def resolver_ruta(base, valor):
 
 def leer_entero(configuracion, clave):
     return int(configuracion[clave])
+def leer_cadena(configuracion, clave):
+    return str(configuracion[clave])
 
 def leer_booleano(configuracion, clave):
     valor = configuracion[clave].strip().upper()
@@ -86,7 +88,7 @@ def main(archivo_configuracion=None):
         paso_talla=leer_entero(configuracion, "PASO_TALLA_COLOCAP"),
         fila_totales=leer_entero(configuracion, "FILA_TOTALES_COLOCAP"))
 
-    salida_regresiones = generar_regresiones_bacalao(
+    salida_regresiones = generar_regresiones(
         archivo=resolver_ruta(base, configuracion["ARCHIVO_PALANGRE"]),
         anio=anio,
         especie=leer_entero(configuracion, "ESPECIE_CODIGO"),
@@ -102,7 +104,7 @@ def main(archivo_configuracion=None):
     salida_matriz = generar_matriz_talla_edad(
         archivo=resolver_ruta(base, configuracion["ARCHIVO_TALLA_EDAD"]),
         salida=resolver_ruta(base, configuracion["SALIDA_MATRIZ"]),
-        pesqueria=leer_entero(configuracion, "PESQUERIA_TALLA_EDAD"),
+        pesqueria=leer_cadena(configuracion, "PESQUERIA_TALLA_EDAD"),
         paso_talla=leer_entero(configuracion, "PASO_TALLA_MATRIZ"),
         edad_agrupada=leer_entero(configuracion, "EDAD_AGRUPADA"))
 

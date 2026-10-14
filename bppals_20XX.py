@@ -1,9 +1,7 @@
 """Genera BPPALS con los parámetros entregados por main.py."""
 
-from pathlib import Path
 import warnings
-
-from plantillas_bppals import cargar_plantilla_bppals, guardar_bppals_con_diseno
+from pathlib import Path
 
 from lectura import (
     buscar_desembarque,
@@ -13,6 +11,7 @@ from lectura import (
 )
 from metodos_matematicos import calcular_a1_a2
 from openpyxl import load_workbook
+from plantillas_bppals import cargar_plantilla_bppals, guardar_bppals_con_diseno
 
 
 # ============================================================

@@ -108,7 +108,7 @@ def calcular_limites_iqr(valores, factor=1.5):
     limite_sup = q3 + factor * iqr
     return q1, q3, iqr, limite_inf, limite_sup
 
-def calcular_cook_lineal(datos, x="Nº_DE_ANILLOS", y="LONGITUD_DEL_PEZ_(CM)"):
+def calcular_cook_lineal(datos, x="N°Anillos", y="Longitud"):
     grupo = datos.copy()
     x_val = grupo[x].to_numpy(dtype=float)
     y_val = grupo[y].to_numpy(dtype=float)
@@ -196,8 +196,8 @@ def aplicar_outliers_longpeso(datos, metodo, b, log_a):
     datos_limpios = datos_metodo[~datos_metodo[columna]].copy()
     return datos_metodo, datos_limpios, datos_metodo[columna].sum()
 
-def filtrar_outliers_mad_por_sexo(datos, columna="LONGITUD_DEL_PEZ_(CM)",umbral=2,
-                                  columna_sexo="SEXO", sexos=(1, 2)):
+def filtrar_outliers_mad_por_sexo(datos, columna="Longitud",umbral=2,
+                                  columna_sexo="", sexos=(1, 2)):
     grupos_limpios = []
     resumen = []
 
@@ -217,8 +217,8 @@ def filtrar_outliers_mad_por_sexo(datos, columna="LONGITUD_DEL_PEZ_(CM)",umbral=
 
     return pd.concat(grupos_limpios, ignore_index=True), resumen
 
-def filtrar_outliers_cook_por_sexo(datos, x="Nº_DE_ANILLOS", y="LONGITUD_DEL_PEZ_(CM)", factor=1.0,
-                                   columna_sexo="SEXO", sexos=(1, 2)):
+def filtrar_outliers_cook_por_sexo(datos, x="N°Anillos", y="Longitud", factor=1.0,
+                                   columna_sexo="Sexo", sexos=(1, 2)):
     grupos_limpios = []
     resumen = []
 
@@ -239,7 +239,7 @@ def filtrar_outliers_cook_por_sexo(datos, x="Nº_DE_ANILLOS", y="LONGITUD_DEL_PE
 
     return pd.concat(grupos_limpios, ignore_index=True), resumen
 
-def filtrar_outliers_iqr_por_sexo_edad(datos, columna="LONGITUD_DEL_PEZ_(CM)", columna_sexo="SEXO", columna_edad="GRUPO_EDAD",
+def filtrar_outliers_iqr_por_sexo_edad(datos, columna="Longitud", columna_sexo="Sexo", columna_edad="GRUPO_EDAD",
                                        factor=3.5, sexos=(1, 2)):
     grupos_limpios = []
     resumen = []
@@ -256,5 +256,11 @@ def filtrar_outliers_iqr_por_sexo_edad(datos, columna="LONGITUD_DEL_PEZ_(CM)", c
             grupos_limpios.append(grupo[filtro].copy())
 
         resumen.append((sexo, inicial, eliminados_total, inicial - eliminados_total))
+    for sexo in sexos:
+        datos_sexo = datos[datos[columna_sexo] == sexo].copy()
+        print(f"sexo={sexo}: n={len(datos_sexo)}")
+        if len(datos_sexo) == 0:
+            print(f"  ⚠️ Valores únicos en {columna_sexo}: {datos[columna_sexo].unique()[:10]}")
+        print(f"  grupos por {columna_edad}: {datos_sexo[columna_edad].nunique()}")
 
     return pd.concat(grupos_limpios, ignore_index=True), resumen
