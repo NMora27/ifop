@@ -58,9 +58,9 @@ def generar_regresiones(archivo, anio, especie, latitud_zona_1, latitud_zona_2,
     df.loc[(df["LATITUD"] <= latitud_zona_1) &
            (df["LATITUD"] > latitud_zona_2), "ZONA"] = 1
     df.loc[df["LATITUD"] <= latitud_zona_2, "ZONA"] = 2
-    df = df[(df["ESPECIE_OBJETIVO_LANCE"] == especie) &
-            (df["SEXO_ESPECIMEN"].isin([1, 2])) &
-            (df["LATITUD"] <= latitud_zona_2)]
+    df = df[(df["ESPECIE_OBJETIVO_LANCE"] == especie) & (df["SEXO_ESPECIMEN"].isin([1, 2])) &
+            (df["LATITUD"] <= latitud_zona_2) & (df["LONGITUD_ESPECIMEN"] > 0) &
+                  (df["LONGITUD_ESPECIMEN"] < 300)]
 
     salida_preprocesamiento.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(salida_preprocesamiento, sep=";", index=False)
