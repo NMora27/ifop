@@ -34,7 +34,7 @@ def guardar_dataframe(datos, nombre_archivo):
 
 # ============================================================
 # PROCESO PRINCIPAL
-def generar_regresiones_bacalao(archivo, anio, especie, latitud_zona_1, latitud_zona_2,
+def generar_regresiones(archivo, anio, especie, latitud_zona_1, latitud_zona_2,
                                 directorio_graficos, salida_preprocesamiento,
                                 salida_regresiones, salida_iqr_ambos,
                                 salida_iqr_machos, salida_iqr_hembras):
