@@ -256,11 +256,5 @@ def filtrar_outliers_iqr_por_sexo_edad(datos, columna="Longitud", columna_sexo="
             grupos_limpios.append(grupo[filtro].copy())
 
         resumen.append((sexo, inicial, eliminados_total, inicial - eliminados_total))
-    for sexo in sexos:
-        datos_sexo = datos[datos[columna_sexo] == sexo].copy()
-        print(f"sexo={sexo}: n={len(datos_sexo)}")
-        if len(datos_sexo) == 0:
-            print(f"  ⚠️ Valores únicos en {columna_sexo}: {datos[columna_sexo].unique()[:10]}")
-        print(f"  grupos por {columna_edad}: {datos_sexo[columna_edad].nunique()}")
 
     return pd.concat(grupos_limpios, ignore_index=True), resumen

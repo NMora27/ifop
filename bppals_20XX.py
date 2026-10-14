@@ -84,7 +84,7 @@ def generar_bppals(especie, sexo, anio, zona, area, flota_desembarque, archivo_m
     # ------------------------------------------------------------
     # 1.4 LEER FRECUENCIAS PARA COLOCAP
     
-    total_ejemplares,n_machos,n_hembras,frecuencias_colocap = leer_frecuencias_colocap(
+    _total_ejemplares,_n_machos,_n_hembras,frecuencias_colocap = leer_frecuencias_colocap(
         ARCHIVO_COLOCAP, HOJA_COLOCAP, PASO_TALLA)
     
     
