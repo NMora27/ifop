@@ -152,10 +152,15 @@ Al finalizar correctamente se mostrará el mensaje:
 
 ### Carpeta `Tablas/`
 
+Los nombres del CSV y del Excel de regresiones se configuran por separado con
+`SALIDA_REGRESIONES` y `SALIDA_REGRESIONES_EXCEL` en `configuracion.txt`.
+Ambos exportan `a`, `b` y `r²` con 7 decimales como máximo. El Excel muestra
+`a` sin notación científica. `r_PEARSON` en el CSV corresponde a `r`, no a `r²`.
+
 | Archivo | Descripción |
 |---|---|
 | `{AÑO}_Bp_Analisis_Colocap.xlsx` | Análisis COLOCAP generado desde los archivos DBF. |
-| `resultados_regresiones.csv` | Parámetros `a`, `b`, correlación de Pearson, registros utilizados y eliminados para cada método. |
+| `resultados_comparación_regresiones.csv` | Parámetros `a`, `b`, `r_PEARSON`, `r²`, registros utilizados y eliminados para cada método. |
 | `resultados_regresiones.xlsx` | Tabla con `a`, `b`, `r²` y `N` para machos, hembras y ambos, e intervalos de confianza del 95 % de `a` y `b`. Hojas Original, Cook, MAD e IQR. |
 | `bacalao_filtrado.csv` | Datos de palangre filtrados durante el preprocesamiento. |
 | `bacalao_filtrado_iqr.csv` | Datos de ambos sexos filtrados mediante IQR. |
@@ -197,11 +202,33 @@ Los métodos Cook y MAD se generan como respaldo y comparación. El conjunto uti
 
 ### Matriz talla–edad
 
+El mismo flujo admite dos formatos según `ANIO` en `configuracion.txt`:
+
+- Hasta 2025: columnas `LONGITUD_DEL_PEZ_(CM)`, `Nº_DE_ANILLOS`,
+  `CÓDIGO_DE_PESQUERÍA` y `SEXO`, con filtro `PESQUERIA_TALLA_EDAD`.
+- Desde 2026: columnas `ANIO_MUESTRO`, `COS_ESPECIE`, `ZONA`,
+  `LONGITUD_ESPECIMEN`, `SEXO` y la columna de edad correspondiente.
+  Se filtra por `ANIO` y `ESPECIE_CODIGO`. Se utiliza `EDAD` para los códigos
+  37, 27 y 54, o `EDAD_CRONOLOGICA` para 1, 2, 3, 4 y 6.
+  Solo se exige la columna de edad correspondiente a la especie seleccionada.
+  Los códigos sin correspondencia definida generan un error explicativo.
+
+Para 2026 y años posteriores, ajustar `ANIO`, `ARCHIVO_TALLA_EDAD` y, si
+corresponde, `ESPECIE_CODIGO`. `ZONA_TALLA_EDAD` permite seleccionar una zona;
+vacío incluye todas. Este valor es independiente de `ZONA`, que describe la
+pesquería para BPPALS. El formato nuevo no tiene columna de pesquería, por lo
+que `PESQUERIA_TALLA_EDAD` solo se aplica al formato histórico. Los nombres de
+columnas se esperan tal como están indicados, incluidos `ANIO_MUESTRO` y
+`COS_ESPECIE`. La lectura utiliza la primera hoja del Excel.
+
+Esta compatibilidad corresponde a la matriz talla–edad; el resto del flujo
+mantiene sus propios formatos de entrada y reglas para bacalao de profundidad.
+
 La matriz talla–edad utiliza los siguientes criterios:
 
-- Pesquería definida en `PESQUERIA_TALLA_EDAD`.
+- Selección según los filtros del formato correspondiente.
 - Sexo 1 para machos y 2 para hembras.
-- Se excluyen registros con cero anillos.
+- Se excluyen edades iguales o menores que cero, o datos de edad/talla no válidos.
 - Se excluyen longitudes iguales o menores que cero.
 - Las tallas se agrupan según `PASO_TALLA_MATRIZ`.
 - Las edades iguales o superiores a `EDAD_AGRUPADA` se agrupan como `40+`.

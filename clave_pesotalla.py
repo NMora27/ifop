@@ -25,20 +25,25 @@ def crear_matriz(datos, edad_agrupada):
 
 # ============================================================
 # PROCESO PRINCIPAL
-def generar_matriz_talla_edad(archivo, salida, pesqueria, paso_talla, edad_agrupada):
+def generar_matriz_talla_edad(archivo, salida, pesqueria, paso_talla, edad_agrupada,
+                            anio=None, especie=None, zona=None):
     archivo = Path(archivo)
     salida = Path(salida)
     columnas = ["LONGITUD_DEL_PEZ_(CM)", "Nº_DE_ANILLOS", "CÓDIGO_DE_PESQUERÍA", "SEXO"]
 
     # --------------------------------------------------
     # LECTURA
-    datos = leer_datos_talla_edad(archivo, columnas)
+    datos = leer_datos_talla_edad(archivo, columnas, anio=anio, especie=especie, zona=zona)
 
     # --------------------------------------------------
     # FILTROS
-    datos = datos[(datos["CÓDIGO_DE_PESQUERÍA"] == pesqueria) & (datos["SEXO"].isin([1, 2])) &
-                  (datos["Nº_DE_ANILLOS"] > 0) & (datos["LONGITUD_DEL_PEZ_(CM)"] > 0) &
-                  (datos["LONGITUD_DEL_PEZ_(CM)"] < 300)].copy()
+    if anio is None or int(anio) < 2026:
+        datos = datos[datos["CÓDIGO_DE_PESQUERÍA"] == pesqueria].copy()
+    datos = datos[(datos["SEXO"].isin([1, 2])) &
+                  (datos["Nº_DE_ANILLOS"] > 0) & (datos["LONGITUD_DEL_PEZ_(CM)"] > 0)].copy()
+    datos = datos[np.isfinite(datos[["Nº_DE_ANILLOS", "LONGITUD_DEL_PEZ_(CM)"]]).all(axis=1)].copy()
+    if datos.empty:
+        raise ValueError("No hay registros válidos para la matriz talla-edad con los filtros seleccionados")
     datos["Nº_DE_ANILLOS"] = datos["Nº_DE_ANILLOS"].astype(int)
     datos["GRUPO_EDAD"] = datos["Nº_DE_ANILLOS"].astype(str)
     datos.loc[datos["Nº_DE_ANILLOS"] >= edad_agrupada,
@@ -46,7 +51,7 @@ def generar_matriz_talla_edad(archivo, salida, pesqueria, paso_talla, edad_agrup
 
     # --------------------------------------------------
     # APLICAR LIMPIEZA IQR
-    datos, resumen_iqr = filtrar_outliers_iqr_por_sexo_edad(
+    datos, _resumen_iqr = filtrar_outliers_iqr_por_sexo_edad(
         datos, columna="LONGITUD_DEL_PEZ_(CM)")
 
     # --------------------------------------------------

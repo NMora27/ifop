@@ -133,8 +133,48 @@ def leer_excel_palangre(archivo, columnas, especie, anio):
     datos["PESO_ESPECIMEN"] = datos["PESO_ESPECIMEN"].astype(float)
     return datos, n_original
 
-def leer_datos_talla_edad(archivo, columnas):
+def leer_datos_talla_edad(archivo, columnas=None, *, anio=None, especie=None, zona=None):
+    """Lee el formato histórico o normaliza el estándar utilizado desde 2026."""
     datos = pd.read_excel(archivo)
+    if anio is not None and int(anio) >= 2026:
+        if especie is None:
+            raise ValueError("Debe indicar ESPECIE_CODIGO para la matriz desde 2026")
+        especie = int(especie)
+        if especie in (37, 27, 54):
+            columna_edad = "EDAD"
+        elif especie in (1, 2, 3, 4, 6):
+            columna_edad = "EDAD_CRONOLOGICA"
+        else:
+            raise ValueError(f"No está definida la columna de edad para la especie {especie}")
+        requeridas = ["ANIO_MUESTRO", "COS_ESPECIE", "ZONA", "LONGITUD_ESPECIMEN",
+                      columna_edad, "SEXO"]
+        faltantes = [col for col in requeridas if col not in datos.columns]
+        if faltantes:
+            raise ValueError(f"Faltan columnas del formato talla-edad desde 2026: {', '.join(faltantes)}")
+        datos = datos[requeridas].copy()
+        for col in requeridas:
+            if col != "ZONA":
+                datos[col] = pd.to_numeric(datos[col], errors="coerce")
+        datos = datos[(datos["ANIO_MUESTRO"] == int(anio)) &
+                      (datos["COS_ESPECIE"] == especie)].copy()
+        if zona is not None and str(zona).strip():
+            # Acepta códigos numéricos de Excel (1.0) y zonas expresadas como texto.
+            zona_texto = str(zona).strip()
+            zona_numero = pd.to_numeric(zona_texto, errors="coerce")
+            if pd.notna(zona_numero):
+                filtro = pd.to_numeric(datos["ZONA"], errors="coerce") == zona_numero
+            else:
+                filtro = datos["ZONA"].astype(str).str.strip() == zona_texto
+            datos = datos[filtro].copy()
+        datos = datos.rename(columns={"LONGITUD_ESPECIMEN": "LONGITUD_DEL_PEZ_(CM)",
+                                      columna_edad: "Nº_DE_ANILLOS"})
+        return datos[["LONGITUD_DEL_PEZ_(CM)", "Nº_DE_ANILLOS", "SEXO"]].dropna()
+
+    columnas = columnas or ["LONGITUD_DEL_PEZ_(CM)", "Nº_DE_ANILLOS",
+                            "CÓDIGO_DE_PESQUERÍA", "SEXO"]
+    faltantes = [col for col in columnas if col not in datos.columns]
+    if faltantes:
+        raise ValueError(f"Faltan columnas del formato talla-edad histórico: {', '.join(faltantes)}")
     datos = datos[columnas].copy()
 
     for col in columnas:

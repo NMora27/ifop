@@ -73,6 +73,7 @@ def exportar_tabla_regresiones(resultados, salida):
                     [grupo, "Límite superior (95 %)", *superior, None, None],
                 ])
             tabla = pd.DataFrame(filas, columns=["Sexo", "Estimación", "a", "b", "r²", "N"])
+            tabla[["a", "b", "r²"]] = tabla[["a", "b", "r²"]].round(7)
             tabla.to_excel(writer, sheet_name=metodo, index=False)
             hoja = writer.sheets[metodo]
             hoja.freeze_panes = "C2"
@@ -81,15 +82,16 @@ def exportar_tabla_regresiones(resultados, salida):
                                    "E": 18, "F": 12}.items():
                 hoja.column_dimensions[columna].width = ancho
             for fila in hoja.iter_rows(min_row=2):
-                fila[2].number_format = "0.000000E+00"
-                fila[3].number_format = "0.000000"
-                fila[4].number_format = "0.000000"
+                fila[2].number_format = "0.#######"
+                fila[3].number_format = "0.#######"
+                fila[4].number_format = "0.#######"
                 fila[5].number_format = "0"
         pd.DataFrame({"Notas": [
             "Modelo: W = a × L^b; ajuste lineal en escala log10.",
             "IC marginales del 95 % con t de Student y N - 2 grados de libertad.",
             "El IC de a se obtiene transformando los límites de log10(a).",
             "r² corresponde al ajuste en escala log10; N es el número de observaciones utilizadas.",
+            "a, b y r² se redondean a 7 decimales, igual que en el CSV; r_PEARSON es r, no r².",
             "Los límites se presentan para a y b; r² y N solo en la fila Área total.",
             "IC vacíos si N <= 2 o si no hay variación en longitud.",
             "Área total corresponde al área seleccionada por el filtro geográfico del proceso.",
@@ -104,7 +106,8 @@ def exportar_tabla_regresiones(resultados, salida):
 def generar_regresiones(archivo, anio, especie, latitud_zona_1, latitud_zona_2,
                                 directorio_graficos, salida_preprocesamiento,
                                 salida_regresiones, salida_iqr_ambos,
-                                salida_iqr_machos, salida_iqr_hembras):
+                                salida_iqr_machos, salida_iqr_hembras,
+                                salida_regresiones_excel=None):
     archivo = Path(archivo)
     directorio_graficos = Path(directorio_graficos)
     salida_preprocesamiento = Path(salida_preprocesamiento)
@@ -125,9 +128,9 @@ def generar_regresiones(archivo, anio, especie, latitud_zona_1, latitud_zona_2,
     df.loc[(df["LATITUD"] <= latitud_zona_1) &
            (df["LATITUD"] > latitud_zona_2), "ZONA"] = 1
     df.loc[df["LATITUD"] <= latitud_zona_2, "ZONA"] = 2
-    df = df[(df["ESPECIE_OBJETIVO_LANCE"] == especie) & (df["SEXO_ESPECIMEN"].isin([1, 2])) &
-            (df["LATITUD"] <= latitud_zona_2) & (df["LONGITUD_ESPECIMEN"] > 0) &
-                  (df["LONGITUD_ESPECIMEN"] < 300)]
+    df = df[(df["ESPECIE_OBJETIVO_LANCE"] == especie) &
+            (df["SEXO_ESPECIMEN"].isin([1, 2])) &
+            (df["LATITUD"] <= latitud_zona_2)]
 
     salida_preprocesamiento.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(salida_preprocesamiento, sep=";", index=False)
@@ -177,13 +180,17 @@ def generar_regresiones(archivo, anio, especie, latitud_zona_1, latitud_zona_2,
     resultados_regresion = pd.DataFrame(
         filas_resumen, columns=["GRUPO", "METODO", "a", "b", "r_PEARSON",
                                 "REGISTROS_UTILIZADOS", "ELIMINADOS"])
-    resultados_regresion[["a", "b", "r_PEARSON"]] = resultados_regresion[
-        ["a", "b", "r_PEARSON"]].round(5)
+    resultados_regresion["r²"] = resultados_regresion["r_PEARSON"] ** 2
+    columnas_numericas = ["a", "b", "r_PEARSON", "r²"]
+    resultados_regresion[columnas_numericas] = resultados_regresion[
+        columnas_numericas].round(7)
     salida_regresiones.parent.mkdir(parents=True, exist_ok=True)
     resultados_regresion.to_csv(salida_regresiones, sep=";", decimal=",", index=False)
 
     print(f"Archivo generado: {salida_regresiones}")
-    exportar_tabla_regresiones(resultados, salida_regresiones.with_suffix(".xlsx"))
+    salida_excel = (Path(salida_regresiones_excel) if salida_regresiones_excel is not None
+                    else salida_regresiones.with_suffix(".xlsx"))
+    exportar_tabla_regresiones(resultados, salida_excel)
 
     # --------------------------------------------------
     # GRÁFICOS DE REGRESIÓN

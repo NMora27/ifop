@@ -42,6 +42,9 @@ LATITUD_ZONA_2=-47
 # ============================================================
 # MATRIZ TALLA-EDAD
 ARCHIVO_TALLA_EDAD=Unido_Bacalao_de_profundidad_{ANIO}.xlsx
+# Hasta 2025 se filtra por PESQUERIA_TALLA_EDAD; desde 2026 por año y especie.
+# Desde 2026: ZONA_TALLA_EDAD vacía incluye todas las zonas; indicar un valor para filtrar.
+ZONA_TALLA_EDAD=
 SALIDA_MATRIZ={DIRECTORIO_TABLAS}/matriz_talla_edad_pesqueria25.xlsx
 PESQUERIA_TALLA_EDAD=25
 PASO_TALLA_MATRIZ=5
