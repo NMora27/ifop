@@ -1,4 +1,5 @@
 # Automatización Procesamiento de Datos de Edad y Crecimiento — IFOP
+# USO EXCLUSIVO PARA LOS DATOS DEL 2024
 
 Herramienta en Python para automatizar el procesamiento de datos de bacalao de profundidad. El programa genera el análisis COLOCAP, regresiones longitud–peso, matrices talla–edad y libros BPPALS, sin depender de una plantilla BPPALS externa.
 
