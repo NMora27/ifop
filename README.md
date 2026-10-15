@@ -21,7 +21,7 @@ La versión actual está configurada para bacalao de profundidad, pero los pará
 - Paquetes de Python:
 
 ```bash
-python -m pip install numpy pandas openpyxl matplotlib dbfread xlsxwriter
+python -m pip install numpy pandas scipy openpyxl matplotlib dbfread xlsxwriter
 ```
 
 ## Estructura del proyecto
@@ -156,6 +156,7 @@ Al finalizar correctamente se mostrará el mensaje:
 |---|---|
 | `{AÑO}_Bp_Analisis_Colocap.xlsx` | Análisis COLOCAP generado desde los archivos DBF. |
 | `resultados_regresiones.csv` | Parámetros `a`, `b`, correlación de Pearson, registros utilizados y eliminados para cada método. |
+| `resultados_regresiones.xlsx` | Tabla con `a`, `b`, `r²` y `N` para machos, hembras y ambos, e intervalos de confianza del 95 % de `a` y `b`. Hojas Original, Cook, MAD e IQR. |
 | `bacalao_filtrado.csv` | Datos de palangre filtrados durante el preprocesamiento. |
 | `bacalao_filtrado_iqr.csv` | Datos de ambos sexos filtrados mediante IQR. |
 | `bacalao_machos_filtrado_iqr.csv` | Datos de machos filtrados mediante IQR. |
