@@ -30,7 +30,8 @@ FILA_TOTALES_COLOCAP=56
 # Ruta del Excel Palangre. El nombre debe incluir Palangre y {ANIO}.
 ARCHIVO_PALANGRE=Palangre_{ANIO}.xlsx
 SALIDA_PREPROCESAMIENTO={DIRECTORIO_TABLAS}/bacalao_filtrado.csv
-SALIDA_REGRESIONES={DIRECTORIO_TABLAS}/resultados_regresiones.csv
+SALIDA_REGRESIONES={DIRECTORIO_TABLAS}/resultados_comparación_regresiones.csv
+SALIDA_REGRESIONES_EXCEL={DIRECTORIO_TABLAS}/resultados_regresiones.xlsx
 DIRECTORIO_GRAFICOS=Graficos
 SALIDA_IQR_AMBOS={DIRECTORIO_TABLAS}/bacalao_filtrado_iqr.csv
 SALIDA_IQR_MACHOS={DIRECTORIO_TABLAS}/bacalao_machos_filtrado_iqr.csv
