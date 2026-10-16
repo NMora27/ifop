@@ -27,13 +27,16 @@ def generar_analisis_colocap(archivo_resumen, archivo_tallas, archivo_sexual, sa
     # ----------------------------
     # 3. FILTROS
     df_res_zona = df_res[(df_res["AGRUPACION"] == "ZONA") &
+                         (df_res["PESQUERIA"] == pesqueria) &
                          (df_res["ESPECIE"] == especie)].copy()
     df_tal_f = df_tal[(df_tal["AGRUPACION"] == "Total Periodo") &
                       (df_tal["ESCALA"] == "Anual") &
+                      (df_tal["PESQUERIA"] == pesqueria) &
                       (df_tal["ESPECIE"] == especie) &
                       (df_tal["SEXO"].isin([1, 2]))].copy()
     df_sex_f = df_sex[(df_sex["AGRUPACION"] == "Total Periodo") &
                       (df_sex["ESCALA"] == "Anual") &
+                      (df_sex["PESQUERIA"] == pesqueria) &
                       (df_sex["ESPECIE"] == especie) &
                       (df_sex["SEXO"].isin([1, 2]))].copy()
 

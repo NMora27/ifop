@@ -135,6 +135,17 @@ def generar_bppals(especie, sexo, anio, zona, area, flota_desembarque, archivo_m
     wb.calculation.calcMode = "auto"
     wb.calculation.fullCalcOnLoad = True
     wb.calculation.forceFullCalc = True
+
+    # Filas de Colocap asociadas a cada marca de clase. Se reutilizan para la
+    # columna Verificación y la composición de captura.
+    filas_marcas = {}
+    for fila in range(FILA_COLOCAP_INICIO,FILA_COLOCAP_FIN + 1):
+        marca = ws_colocap.cell(fila,2).value
+
+        try:
+            filas_marcas[int(marca)] = fila
+        except (TypeError,ValueError):
+            continue
     
     
     # ============================================================
@@ -166,6 +177,8 @@ def generar_bppals(especie, sexo, anio, zona, area, flota_desembarque, archivo_m
     for fila in range(FILA_PROB_INICIO,FILA_PROB_PLANTILLA_FIN + 1):
         for columna in range(2,COL_EDAD_FIN + 1):
             ws_clave.cell(fila,columna).value = None
+
+    ws_clave["A74"] = "VERIFICACIÓN"
     
     # ------------------------------------------------------------
     # 5.3 CLAVE EDAD-TALLA
@@ -178,10 +191,20 @@ def generar_bppals(especie, sexo, anio, zona, area, flota_desembarque, archivo_m
     
     for i,talla in enumerate(tallas):
         fila = FILA_CLAVE_INICIO + i
+        marca_clase = talla + PASO_TALLA // 2
+        fila_colocap = filas_marcas.get(marca_clase)
+
+        if fila_colocap is None:
+            raise ValueError(
+                f"No se encontró la marca de clase {marca_clase} en Colocap")
     
         ws_clave.cell(fila,2).value = talla
         ws_clave.cell(fila,3).value = "-"
         ws_clave.cell(fila,4).value = talla + PASO_TALLA - 1
+
+        columna_sexo = "D" if SEXO == "Hembras" else "C"
+        ws_clave.cell(fila,1).value = \
+            f'=IF(Colocap!{columna_sexo}{fila_colocap}>0,IF(Clave!F{fila}>0,"CL OK","FALTA CL")," ")'
     
         for edad in range(EDAD_MIN,EDAD_MAX):
             columna = COL_EDAD_INICIO + (edad - EDAD_MIN)
@@ -305,21 +328,7 @@ def generar_bppals(especie, sexo, anio, zona, area, flota_desembarque, archivo_m
         ws_comp.cell(7,col_comp).value = f"=Clave!{letra_clave}74"
     
     # ------------------------------------------------------------
-    # 7.4 RELACIÓN MARCA DE CLASE - COLOCAP
-    filas_marcas = {}
-    
-    for fila in range(FILA_COLOCAP_INICIO,FILA_COLOCAP_FIN + 1):
-        marca = ws_colocap.cell(fila,2).value
-    
-        try:
-            marca = int(marca)
-        except (TypeError,ValueError):
-            continue
-    
-        filas_marcas[marca] = fila
-    
-    # ------------------------------------------------------------
-    # 7.5 COMPOSICIÓN DE CAPTURA
+    # 7.4 COMPOSICIÓN DE CAPTURA
     
     col_frec = "D" if SEXO == "Hembras" else "C"
     celda_numero = "$F$6" if SEXO == "Hembras" else "$E$6"
@@ -567,7 +576,9 @@ def generar_bppals(especie, sexo, anio, zona, area, flota_desembarque, archivo_m
     # 11. GENERAR HOJA DISTR.CAPT.Nº
     
     FILA_DISTR_INICIO = 4
-    FILA_DISTR_FIN = FILA_DISTR_INICIO + len(tallas) - 1
+    FILA_DISTR_PLANTILLA_FIN = 45
+    tallas_distr = tallas[:FILA_DISTR_PLANTILLA_FIN - FILA_DISTR_INICIO + 1]
+    FILA_DISTR_FIN = FILA_DISTR_INICIO + len(tallas_distr) - 1
     
     # ------------------------------------------------------------
     # 11.1 ENCABEZADOS
@@ -592,7 +603,7 @@ def generar_bppals(especie, sexo, anio, zona, area, flota_desembarque, archivo_m
     # ------------------------------------------------------------
     # 11.3 DISTRIBUCIÓN POR TALLA
     
-    for i,talla in enumerate(tallas):
+    for i,talla in enumerate(tallas_distr):
         fila = FILA_DISTR_INICIO + i
         fila_tabla = FILA_TABLA_INICIO + i
         marca_clase = talla + PASO_TALLA // 2
@@ -629,7 +640,8 @@ def generar_bppals(especie, sexo, anio, zona, area, flota_desembarque, archivo_m
     # 12. GENERAR HOJA TABLA PRINT
     
     FILA_PRINT_INICIO = 8
-#    FILA_PRINT_FIN = FILA_PRINT_INICIO + len(tallas) - 1
+    FILA_PRINT_PLANTILLA_FIN = 51
+    tallas_print = tallas[:FILA_PRINT_PLANTILLA_FIN - FILA_PRINT_INICIO + 1]
     
     # ------------------------------------------------------------
     # 12.1 TÍTULO
@@ -648,14 +660,14 @@ def generar_bppals(especie, sexo, anio, zona, area, flota_desembarque, archivo_m
     
     # ------------------------------------------------------------
     # 12.3 LIMPIAR TABLA ANTIGUA
-    for fila in range(8,51):
+    for fila in range(FILA_PRINT_INICIO,FILA_PRINT_PLANTILLA_FIN + 1):
         for columna in range(1,COL_COMP_EDAD_FIN + 1):
             ws_print.cell(fila,columna).value = None
     
     # ------------------------------------------------------------
     # 12.4 COMPOSICIÓN TALLA-EDAD
     
-    for i in range(len(tallas)):
+    for i in range(len(tallas_print)):
         fila_print = FILA_PRINT_INICIO + i
         fila_tabla = FILA_TABLA_INICIO + i
         ws_print.cell(fila_print,1).value = f"=Tabla!A{fila_tabla}"
@@ -668,14 +680,9 @@ def generar_bppals(especie, sexo, anio, zona, area, flota_desembarque, archivo_m
                 f"=Tabla!{letra}{fila_tabla}"
     
     # ------------------------------------------------------------
-    # 12.5 LIMPIAR CLASE SOBRANTE
-    for columna in range(1,COL_COMP_EDAD_FIN + 1):
-        ws_print.cell(50,columna).value = None
-    
-    # ------------------------------------------------------------
-    # 12.6 RESÚMENES
-    filas_print = { 52: 61,     # Total
-                    54: 63,     # Porcentaje
+    # 12.5 RESÚMENES
+    filas_print = { 53: 61,     # Total
+                    55: 63,     # Porcentaje
                     57: 65,     # Talla promedio
                     59: 67,     # Varianza
                     61: 69 }    # Peso promedio

@@ -22,7 +22,7 @@ La versión actual está configurada para bacalao de profundidad, pero los pará
 - Paquetes de Python:
 
 ```bash
-python -m pip install numpy pandas openpyxl matplotlib dbfread xlsxwriter
+python -m pip install numpy pandas scipy openpyxl matplotlib dbfread xlsxwriter
 ```
 
 ## Estructura del proyecto
@@ -34,7 +34,7 @@ ifop/
 ├── main.py
 ├── configuracion.txt
 ├── analisis_colocap.py
-├── regresion_bacalao.py
+├── regresion.py
 ├── clave_pesotalla.py
 ├── bppals_20XX.py
 ├── lectura.py
@@ -42,9 +42,9 @@ ifop/
 ├── E_Resumen.DBF
 ├── ET_Estructura_de_Tallas.DBF
 ├── ET_Proporción_Sexual.DBF
-├── Palangre_2025.csv
-├── Unido_Bacalao_de_profundidad_2025.xlsx
-└── Desembarque 2025 industr para inf final EDAD.xlsx
+├── Biologico_Palangre2024.xlsx
+├── Unido_Bacalao_de_Pofundidad_2024.xlsx
+└── Desembarque 2024 industr para inf final EDAD.xlsx
 ```
 
 Las carpetas `Tablas/` y `Graficos/` se crean automáticamente durante la ejecución.
@@ -56,31 +56,31 @@ Las carpetas `Tablas/` y `Graficos/` se crean automáticamente durante la ejecuc
 | `E_Resumen.DBF` | Obtiene el número de ejemplares para el análisis COLOCAP. |
 | `ET_Estructura_de_Tallas.DBF` | Obtiene proporciones de talla por sexo. |
 | `ET_Proporción_Sexual.DBF` | Obtiene la proporción de machos y hembras. |
-| `Palangre_{AÑO}.csv` | Datos para la regresión longitud–peso. |
-| `Unido_Bacalao_de_profundidad_{AÑO}.xlsx` | Datos para construir la matriz talla–edad. |
+| `Biologico_Palangre2024.xlsx` | Datos para la regresión longitud–peso. |
+| `Unido_Bacalao_de_Pofundidad_2024.xlsx` | Datos para construir la matriz talla–edad. |
 | `Desembarque {AÑO} industr para inf final EDAD.xlsx` | Obtiene el desembarque utilizado en BPPALS. |
 
 Los nombres de los archivos deben coincidir con los definidos en `configuracion.txt`.
 
 ### Columnas requeridas
 
-El archivo `Palangre_{AÑO}.csv` debe contener, al menos, las siguientes columnas:
+La hoja `Sp37-Pal-24` de `Biologico_Palangre2024.xlsx` debe contener, al menos, las siguientes columnas:
 
 ```text
 LATITUD
-ESPECIE_OBJETIVO_LANCE
+COD_ESPECIE
 SEXO_ESPECIMEN
 LONGITUD_ESPECIMEN
 PESO_ESPECIMEN
 ```
 
-El archivo `Unido_Bacalao_de_profundidad_{AÑO}.xlsx` debe contener:
+La hoja `Clave Edad-Talla` de `Unido_Bacalao_de_Pofundidad_2024.xlsx` debe contener:
 
 ```text
-LONGITUD_DEL_PEZ_(CM)
-Nº_DE_ANILLOS
-CÓDIGO_DE_PESQUERÍA
-SEXO
+Longitud
+N°Anillos
+Pesqueria
+Sexo
 ```
 
 Los archivos DBF deben conservar las columnas utilizadas por el proceso, tales como `AGRUPACION`, `ESCALA`, `ESPECIE`, `SEXO`, `TALLA`, `PROPORCION` y `EJEMP_LONG`, según corresponda.
@@ -92,7 +92,7 @@ Antes de ejecutar el programa, abra `configuracion.txt` y modifique los parámet
 Ejemplo:
 
 ```text
-ANIO=2025
+ANIO=2024
 ESPECIE=BACALAO DE PROFUNDIDAD
 ESPECIE_CODIGO=37
 SEXO=Machos
@@ -142,21 +142,22 @@ En sistemas donde Python se ejecuta como `python3`:
 ```bash
 python3 main.py
 ```
-
-Al finalizar correctamente se mostrará el mensaje:
-
-```text
-[ PROCESO FINALIZADO ]
-```
+La terminal mostrará `Archivo generado: ...` por cada salida creada.
 
 ## Resultados generados
 
 ### Carpeta `Tablas/`
 
+Los nombres del CSV y del Excel de regresiones se configuran por separado con
+`SALIDA_REGRESIONES` y `SALIDA_REGRESIONES_EXCEL` en `configuracion.txt`.
+Ambos exportan `a`, `b` y `r²` con 7 decimales como máximo. El Excel muestra
+`a` sin notación científica. `r_PEARSON` en el CSV corresponde a `r`, no a `r²`.
+
 | Archivo | Descripción |
 |---|---|
 | `{AÑO}_Bp_Analisis_Colocap.xlsx` | Análisis COLOCAP generado desde los archivos DBF. |
-| `resultados_regresiones.csv` | Parámetros `a`, `b`, correlación de Pearson, registros utilizados y eliminados para cada método. |
+| `resultados_regresiones.csv` | Parámetros `a`, `b`, `r_PEARSON`, `r²`, registros utilizados y eliminados para cada método. |
+| `resultados_regresiones.xlsx` | Tabla con `a`, `b`, `r²` y `N` para machos, hembras y ambos, e intervalos de confianza del 95 % de `a` y `b`. Hojas Original, Cook, MAD e IQR. |
 | `bacalao_filtrado.csv` | Datos de palangre filtrados durante el preprocesamiento. |
 | `bacalao_filtrado_iqr.csv` | Datos de ambos sexos filtrados mediante IQR. |
 | `bacalao_machos_filtrado_iqr.csv` | Datos de machos filtrados mediante IQR. |
@@ -197,15 +198,23 @@ Los métodos Cook y MAD se generan como respaldo y comparación. El conjunto uti
 
 ### Matriz talla–edad
 
+La matriz usa la hoja `Clave Edad-Talla`, filtra `Pesqueria=Industrial` y
+separa machos (`Sexo=1`) y hembras (`Sexo=2`).
+
 La matriz talla–edad utiliza los siguientes criterios:
 
-- Pesquería definida en `PESQUERIA_TALLA_EDAD`.
 - Sexo 1 para machos y 2 para hembras.
-- Se excluyen registros con cero anillos.
+- Se excluyen edades iguales o menores que cero, o datos de edad/talla no válidos.
 - Se excluyen longitudes iguales o menores que cero.
 - Las tallas se agrupan según `PASO_TALLA_MATRIZ`.
 - Las edades iguales o superiores a `EDAD_AGRUPADA` se agrupan como `40+`.
 - Se aplica limpieza IQR por sexo y grupo etario.
+
+### BPPALS
+
+El libro conserva las ocho hojas y el diseño original de 2024. En la hoja
+`Clave`, la columna `VERIFICACIÓN` informa `CL OK` cuando una clase con captura
+tiene datos de clave, o `FALTA CL` cuando no los tiene.
 
 ## Problemas frecuentes
 

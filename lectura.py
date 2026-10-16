@@ -131,8 +131,11 @@ def leer_excel_palangre(archivo, columnas, especie, anio):
     datos["PESO_ESPECIMEN"] = datos["PESO_ESPECIMEN"].astype(float)
     return datos, n_original
 
-def leer_datos_talla_edad(archivo, columnas):
+def leer_datos_talla_edad(archivo, columnas, *, anio=None, especie=None, zona=None):
     datos = pd.read_excel(archivo, sheet_name="Clave Edad-Talla")
+    faltantes = [col for col in columnas if col not in datos.columns]
+    if faltantes:
+        raise ValueError(f"Faltan columnas del formato talla-edad 2024: {', '.join(faltantes)}")
     datos = datos[columnas].copy()
     
     for col in columnas:

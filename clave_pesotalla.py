@@ -26,14 +26,15 @@ def crear_matriz(datos, edad_agrupada):
 
 # ============================================================
 # PROCESO PRINCIPAL
-def generar_matriz_talla_edad(archivo, salida, pesqueria, paso_talla, edad_agrupada):
+def generar_matriz_talla_edad(archivo, salida, pesqueria, paso_talla, edad_agrupada,
+                              anio=None, especie=None, zona=None):
     archivo = Path(archivo)
     salida = Path(salida)
     columnas = ["Longitud", "N°Anillos", "Pesqueria", "Sexo"]
 
     # --------------------------------------------------
     # LECTURA
-    datos = leer_datos_talla_edad(archivo, columnas)
+    datos = leer_datos_talla_edad(archivo, columnas, anio=anio, especie=especie, zona=zona)
 
     # --------------------------------------------------
     # FILTROS

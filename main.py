@@ -97,6 +97,7 @@ def main(archivo_configuracion=None):
         directorio_graficos=resolver_ruta(base, configuracion["DIRECTORIO_GRAFICOS"]),
         salida_preprocesamiento=resolver_ruta(base, configuracion["SALIDA_PREPROCESAMIENTO"]),
         salida_regresiones=resolver_ruta(base, configuracion["SALIDA_REGRESIONES"]),
+        salida_regresiones_excel=resolver_ruta(base, configuracion["SALIDA_REGRESIONES_EXCEL"]),
         salida_iqr_ambos=resolver_ruta(base, configuracion["SALIDA_IQR_AMBOS"]),
         salida_iqr_machos=resolver_ruta(base, configuracion["SALIDA_IQR_MACHOS"]),
         salida_iqr_hembras=resolver_ruta(base, configuracion["SALIDA_IQR_HEMBRAS"]))
@@ -106,7 +107,10 @@ def main(archivo_configuracion=None):
         salida=resolver_ruta(base, configuracion["SALIDA_MATRIZ"]),
         pesqueria=leer_cadena(configuracion, "PESQUERIA_TALLA_EDAD"),
         paso_talla=leer_entero(configuracion, "PASO_TALLA_MATRIZ"),
-        edad_agrupada=leer_entero(configuracion, "EDAD_AGRUPADA"))
+        edad_agrupada=leer_entero(configuracion, "EDAD_AGRUPADA"),
+        anio=anio,
+        especie=leer_entero(configuracion, "ESPECIE_CODIGO"),
+        zona=configuracion.get("ZONA_TALLA_EDAD", ""))
 
     if ejecutar_bppals:
         generar_bppals(
