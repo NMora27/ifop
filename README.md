@@ -289,3 +289,20 @@ Confirme que:
 Versión inicial integrada de la automatización para análisis de edad y crecimiento.
 
 ---
+
+### Completar FALTA CL en BPPALS
+
+Después de construir la clave se comprueba la misma condición que usa
+VERIFICACIÓN: captura positiva para el sexo y talla, y suma de edades cero.
+Se agrega **1 en rojo** en la edad más probable según la clave histórica
+industrial de `analisis_talla-edad.zip`, por sexo. Este conteo es estimado;
+no representa la diferencia entre el número de capturas y muestras.
+Las filas con edades observadas se conservan.
+
+`asignar_edad` y `cargar_clave` están en `metodos_matematicos.py`; las
+frecuencias originales y reglas fijas están en `claves_edad.py`.
+Se consulta el punto medio del intervalo de talla. Los empates se resuelven
+por la menor edad. Las edades superiores al máximo se agrupan en la última
+columna. Si no existe referencia o la edad queda por debajo del mínimo,
+se emite un aviso y la fila continúa pendiente. Las asignaciones se informan
+en consola y VERIFICACIÓN se recalcula al abrir el libro en Excel.

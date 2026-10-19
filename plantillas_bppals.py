@@ -6295,7 +6295,7 @@ def _conservar_estilos_de_plantilla(datos_originales, datos_actualizados):
         if celda_actualizada is None:
             continue
 
-        estilo = celda_original.attrib.get("s")
+        estilo = celda_actualizada.attrib.get("s", celda_original.attrib.get("s"))
         celda_original.attrib.clear()
         celda_original.attrib["r"] = referencia
         if estilo is not None:
@@ -6310,7 +6310,7 @@ def _conservar_estilos_de_plantilla(datos_originales, datos_actualizados):
 
     # Las celdas nuevas no estaban en el diseño de referencia, por lo que se
     # añaden sólo si el proceso las requiere. Las existentes conservan siempre
-    # el estilo original de la plantilla.
+    # el estilo de la plantilla con los cambios explícitos del proceso.
     filas_originales = {
         fila.attrib.get("r"): fila
         for fila in hoja_original.findall(etiqueta_fila)
@@ -6365,6 +6365,8 @@ def guardar_bppals_con_diseno(libro, sexo, salida):
                 if archivo.filename.startswith("xl/worksheets/sheet") and \
                    archivo.filename.endswith(".xml"):
                     datos = reemplazar_datos_hoja(datos, actualizado.read(archivo.filename))
+                elif archivo.filename == "xl/styles.xml":
+                    datos = actualizado.read(archivo.filename)
                 elif archivo.filename == "xl/workbook.xml":
                     datos = activar_recalculo(datos)
 

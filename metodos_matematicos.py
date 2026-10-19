@@ -258,3 +258,99 @@ def filtrar_outliers_iqr_por_sexo_edad(datos, columna="LONGITUD_DEL_PEZ_(CM)", c
         resumen.append((sexo, inicial, eliminados_total, inicial - eliminados_total))
 
     return pd.concat(grupos_limpios, ignore_index=True), resumen
+
+
+# Clave histórica industrial y reglas de asignación del análisis talla-edad.
+from claves_edad import CLAVE_HEMBRAS, CLAVE_MACHOS, REGLAS_EDAD_FIJA
+
+
+def cargar_clave(sexo=None):
+    """Devuelve una copia de las frecuencias por talla y edad, sin abrir archivos.
+
+    sexo: 'macho', 'machos' o 1; 'hembra', 'hembras' o 2.
+    None combina ambos sexos ponderando por sus frecuencias, no promediando
+    las probabilidades de machos y hembras.
+    """
+    valor = sexo.strip().casefold() if isinstance(sexo, str) else sexo
+    if isinstance(valor, bool):
+        raise ValueError('Sexo inválido. Use macho/1, hembra/2 o None.')
+    if valor in (1, 'macho', 'machos'):
+        estructuras = [CLAVE_MACHOS]
+    elif valor in (2, 'hembra', 'hembras'):
+        estructuras = [CLAVE_HEMBRAS]
+    elif valor is None:
+        estructuras = [CLAVE_MACHOS, CLAVE_HEMBRAS]
+    else:
+        raise ValueError('Sexo inválido. Use macho/1, hembra/2 o None.')
+    clave = {}
+    for estructura in estructuras:
+        for talla, edades in estructura.items():
+            frecuencias = clave.setdefault(talla, {})
+            for edad, datos in edades.items():
+                frecuencias[edad] = frecuencias.get(edad, 0) + datos['n']
+    return clave
+
+
+def asignar_edad(talla_cm, clave=None, sexo=None):
+    """Devuelve edad asignada y hasta tres opciones con probabilidad entre 0 y 1.
+
+    sexo: 'macho'/1, 'hembra'/2 o None para ambos sexos conocidos.
+    clave: frecuencias devueltas por cargar_clave(); no combinar con sexo.
+    Cargar la clave una sola vez y pasarla permite consultar muchos peces.
+    Los empates se ordenan por edad ascendente y se indican en el resultado.
+    Se aplican primero las reglas fijas para ambos sexos: (0,25) -> 2,
+    [25,35) -> 3, [35,40] -> 4, (245,infinito) -> 37 años.
+    En esos casos se entrega una sola opción con probabilidad 1 por regla,
+    origen='regla_fija' y frecuencias None (no son observaciones históricas).
+    Fuera de las reglas, una clase sin datos válidos produce ValueError.
+    """
+    if isinstance(talla_cm, bool):
+        raise ValueError('La talla debe ser un número positivo en centímetros.')
+    try:
+        talla = float(talla_cm)
+    except (TypeError, ValueError):
+        raise ValueError('La talla debe ser un número positivo en centímetros.') from None
+    if not math.isfinite(talla) or talla <= 0:
+        raise ValueError('La talla debe ser finita y mayor que cero.')
+    if clave is not None and sexo is not None:
+        raise ValueError('Indique clave o sexo, no ambos a la vez.')
+    if clave is None:
+        clave = cargar_clave(sexo)
+    clase = math.floor(talla / 5) * 5
+    for regla in REGLAS_EDAD_FIJA:
+        cumple_minimo = (talla >= regla['minimo'] if regla['incluye_minimo']
+                         else talla > regla['minimo'])
+        cumple_maximo = (regla['maximo'] is None or
+                         (talla <= regla['maximo'] if regla['incluye_maximo']
+                          else talla < regla['maximo']))
+        if cumple_minimo and cumple_maximo:
+            edad = regla['edad']
+            return {
+                'talla_cm': talla,
+                'clase_talla_cm': (clase, clase + 5),
+                'n_referencia': None,
+                'edad_asignada': edad,
+                'edades_empatadas_en_primer_lugar': [edad],
+                'opciones': [{'edad': edad, 'probabilidad': 1.0, 'n': None}],
+                'origen': 'regla_fija',
+            }
+    frecuencias = clave.get(clase, {})
+    total = sum(frecuencias.values())
+    if total == 0:
+        raise ValueError(f'Sin observaciones válidas para la clase [{clase}, {clase + 5}) cm.')
+    ordenadas = sorted(frecuencias.items(), key=lambda par: (-par[1], par[0]))
+    opciones = [
+        {'edad': edad, 'probabilidad': cantidad / total, 'n': cantidad}
+        for edad, cantidad in ordenadas[:3]
+    ]
+    return {
+        'talla_cm': talla,
+        'clase_talla_cm': (clase, clase + 5),
+        'n_referencia': total,
+        'edad_asignada': opciones[0]['edad'],
+        'edades_empatadas_en_primer_lugar': [
+            edad for edad, cantidad in ordenadas if cantidad == ordenadas[0][1]
+        ],
+        'opciones': opciones,
+        'origen': 'clave_historica',
+    }

@@ -1,6 +1,7 @@
 """Genera BPPALS con los parámetros entregados por main.py."""
 
 import warnings
+from copy import copy
 from pathlib import Path
 
 from lectura import (
@@ -9,9 +10,45 @@ from lectura import (
     leer_matriz_talla_edad,
     leer_parametros_regresion_iqr,
 )
-from metodos_matematicos import calcular_a1_a2
+from metodos_matematicos import asignar_edad, calcular_a1_a2
 from openpyxl import load_workbook
 from plantillas_bppals import cargar_plantilla_bppals, guardar_bppals_con_diseno
+
+
+def completar_clave_talla_edad(hoja, tallas, frecuencias, sexo, paso_talla,
+                              edad_min, edad_max, fila_inicio=75, columna_inicio=7):
+    """Completa las filas cuya verificación daría FALTA CL, sin evaluar fórmulas.
+
+    Una captura positiva con suma de edades cero requiere una clave. El 1
+    agregado representa una asignación estimada, no la cantidad de captura.
+    """
+    asignaciones = []
+    for i, talla in enumerate(tallas):
+        fila = fila_inicio + i
+        captura = frecuencias.get(talla + paso_talla // 2, {}).get(sexo, 0)
+        celdas = [hoja.cell(fila, columna_inicio + edad - edad_min)
+                  for edad in range(edad_min, edad_max + 1)]
+        if captura <= 0 or sum(celda.value or 0 for celda in celdas) > 0:
+            continue
+        try:
+            resultado = asignar_edad(talla + paso_talla / 2, sexo=sexo)
+        except ValueError as error:
+            warnings.warn(f"FALTA CL en {sexo}, talla {talla}: {error}")
+            continue
+        edad = min(resultado['edad_asignada'], edad_max)
+        if edad < edad_min:
+            warnings.warn(f"FALTA CL en {sexo}, talla {talla}: edad estimada "
+                          f"{edad} fuera del rango de la matriz")
+            continue
+        celda = hoja.cell(fila, columna_inicio + edad - edad_min)
+        celda.value = 1
+        fuente = copy(celda.font)
+        fuente.color = 'FFFF0000'
+        celda.font = fuente
+        print(f"Clave completada: {sexo}, talla {talla}, edad "
+              f"{resultado['edad_asignada']} ({resultado['origen']})")
+        asignaciones.append((talla, edad))
+    return asignaciones
 
 
 # ============================================================
@@ -297,6 +334,10 @@ def generar_bppals(especie, sexo, anio, zona, area, flota_desembarque, archivo_m
             ws_colocap.cell(fila,4).value = None
     
     
+    completar_clave_talla_edad(
+        ws_clave, tallas, frecuencias_colocap, SEXO, PASO_TALLA,
+        EDAD_MIN, EDAD_MAX, FILA_CLAVE_INICIO, COL_EDAD_INICIO)
+
     # ============================================================
     # 7. GENERAR HOJA COMP.CAPT.
     
