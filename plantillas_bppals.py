@@ -1,11 +1,11 @@
 """Diseños internos para crear BPPALS sin plantillas externas."""
+import re
 from base64 import b85decode
+from copy import deepcopy
 from gzip import decompress
 from io import BytesIO
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-import re
-from copy import deepcopy
 from xml.etree import ElementTree
 from zipfile import ZIP_DEFLATED, ZipFile
 
@@ -6354,20 +6354,27 @@ def activar_recalculo(libro):
 def guardar_bppals_con_diseno(libro, sexo, salida):
     salida = Path(salida)
     original = obtener_plantilla_bppals(sexo)
+    temporal = NamedTemporaryFile(suffix=".xlsx", delete=False)  # noqa: SIM115
+    temporal.close()
 
-    with NamedTemporaryFile(suffix=".xlsx") as temporal:
+    try:
         libro.save(temporal.name)
+
         with ZipFile(BytesIO(original)) as base, ZipFile(temporal.name) as actualizado, \
              ZipFile(salida, "w", ZIP_DEFLATED) as destino:
+
             for archivo in base.infolist():
                 datos = base.read(archivo.filename)
 
                 if archivo.filename.startswith("xl/worksheets/sheet") and \
                    archivo.filename.endswith(".xml"):
-                    datos = reemplazar_datos_hoja(datos, actualizado.read(archivo.filename))
-                elif archivo.filename == "xl/styles.xml":
-                    datos = actualizado.read(archivo.filename)
+                    datos = reemplazar_datos_hoja(
+                        datos, actualizado.read(archivo.filename))
+
                 elif archivo.filename == "xl/workbook.xml":
                     datos = activar_recalculo(datos)
 
                 destino.writestr(archivo, datos)
+
+    finally:
+        Path(temporal.name).unlink(missing_ok=True)
