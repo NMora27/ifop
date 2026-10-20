@@ -8,28 +8,23 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - name: Descargar código
-        uses: actions/checkout@v4
-
-      - name: Instalar Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Instalar dependencias
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install numpy pandas openpyxl matplotlib dbfread xlsxwriter pyinstaller
-
       - name: Crear ejecutable
+        shell: pwsh
         run: |
-          python -m PyInstaller --noconfirm --clean --onefile --name ifop_consolidado main.py
+          python -m PyInstaller --noconfirm --clean --onefile --name IFOP main.py
+          Get-ChildItem -Path dist -Recurse | Format-Table FullName
 
       - name: Preparar paquete
         shell: pwsh
         run: |
+          $ejecutable = Get-ChildItem -Path dist -Recurse -Filter IFOP.exe | Select-Object -First 1
+
+          if ($null -eq $ejecutable) {
+            throw "No se encontró IFOP.exe dentro de la carpeta dist."
+          }
+
           New-Item -ItemType Directory -Force -Path paquete\IFOP
-          Copy-Item dist\IFOP.exe paquete\IFOP\
+          Copy-Item $ejecutable.FullName paquete\IFOP\
           Copy-Item configuracion.txt paquete\IFOP\
           Copy-Item README.md paquete\IFOP\
           Set-Content -Path paquete\IFOP\Ejecutar_IFOP.bat -Value "@echo off", "IFOP.exe", "pause"
