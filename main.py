@@ -1,10 +1,12 @@
 """Ejecuta el flujo completo de automatización para bacalao de profundidad."""
+import sys
 from pathlib import Path
 
 from analisis_colocap import generar_analisis_colocap
 from bppals_20XX import generar_bppals
-from clave_pesotalla import generar_matriz_talla_edad
 from regresion import generar_regresiones
+
+from clave_pesotalla import generar_matriz_talla_edad
 
 
 # ============================================================
@@ -65,7 +67,7 @@ def leer_booleano(configuracion, clave):
 # ============================================================
 # PROCESO PRINCIPAL
 def main(archivo_configuracion=None):
-    base = Path(__file__).resolve().parent
+    base = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent
     archivo_configuracion = archivo_configuracion or base / "configuracion.txt"
     configuracion = leer_configuracion(archivo_configuracion)
     anio = leer_entero(configuracion, "ANIO")
@@ -106,9 +108,11 @@ def main(archivo_configuracion=None):
         pesqueria=leer_entero(configuracion, "PESQUERIA_TALLA_EDAD"),
         paso_talla=leer_entero(configuracion, "PASO_TALLA_MATRIZ"),
         edad_agrupada=leer_entero(configuracion, "EDAD_AGRUPADA"),
+        talla_min=leer_entero(configuracion, "TALLA_MIN_MATRIZ"),
+        talla_max=leer_entero(configuracion, "TALLA_MAX_MATRIZ"),
         anio=anio,
         especie=leer_entero(configuracion, "ESPECIE_CODIGO"),
-        zona=configuracion.get("ZONA_TALLA_EDAD", ""))
+        zona=configuracion["ZONA"])
 
     if ejecutar_bppals:
         generar_bppals(
