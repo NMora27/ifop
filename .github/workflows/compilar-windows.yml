@@ -8,6 +8,25 @@ jobs:
     runs-on: windows-latest
 
     steps:
+      - name: Descargar código
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Verificar archivos descargados
+        shell: pwsh
+        run: |
+          Get-Location
+          Get-ChildItem -Force
+          if (-not (Test-Path .\main.py)) {
+            throw "No se encontró main.py después de descargar el repositorio."
+          }
+
+      - name: Instalar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
       - name: Instalar dependencias
         run: |
           python -m pip install --upgrade pip
