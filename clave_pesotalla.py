@@ -9,41 +9,38 @@ from openpyxl.styles import Alignment
 
 
 # ============================================================
+# ============================================================
 # CREAR MATRIZ TALLA-EDAD
-def crear_matriz(datos, edad_agrupada):
+def crear_matriz(datos, edad_agrupada, talla_min, talla_max, paso_talla):
     matriz = pd.crosstab(index=datos["GRUPO_TALLA"], columns=datos["GRUPO_EDAD"])
     edades = [str(i) for i in range(1, edad_agrupada) if str(i) in matriz.columns]
 
     if f"{edad_agrupada}+" in matriz.columns:
         edades.append(f"{edad_agrupada}+")
 
-    matriz = matriz[edades]
+    tallas = list(range(talla_min, talla_max + 1, paso_talla))
+    matriz = matriz.reindex(index=tallas, columns=edades, fill_value=0)
+    matriz.index.name = "GRUPO_TALLA"
     matriz["Total general"] = matriz.sum(axis=1)
     matriz.loc["Total general"] = matriz.sum(axis=0)
     return matriz.replace(0, "")
 
-
 # ============================================================
 # PROCESO PRINCIPAL
 def generar_matriz_talla_edad(archivo, salida, pesqueria, paso_talla, edad_agrupada,
-                            anio=None, especie=None, zona=None):
+                              talla_min, talla_max, anio=None, especie=None, zona=None):
     archivo = Path(archivo)
     salida = Path(salida)
     columnas = ["LONGITUD_DEL_PEZ_(CM)", "Nº_DE_ANILLOS", "CÓDIGO_DE_PESQUERÍA", "SEXO"]
 
     # --------------------------------------------------
     # LECTURA
-    datos = leer_datos_talla_edad(archivo, columnas, anio=anio, especie=especie, zona=zona)
+    datos = leer_datos_talla_edad(archivo, columnas)
 
     # --------------------------------------------------
     # FILTROS
-    if anio is None or int(anio) < 2026:
-        datos = datos[datos["CÓDIGO_DE_PESQUERÍA"] == pesqueria].copy()
-    datos = datos[(datos["SEXO"].isin([1, 2])) &
+    datos = datos[(datos["CÓDIGO_DE_PESQUERÍA"] == pesqueria) & (datos["SEXO"].isin([1, 2])) &
                   (datos["Nº_DE_ANILLOS"] > 0) & (datos["LONGITUD_DEL_PEZ_(CM)"] > 0)].copy()
-    datos = datos[np.isfinite(datos[["Nº_DE_ANILLOS", "LONGITUD_DEL_PEZ_(CM)"]]).all(axis=1)].copy()
-    if datos.empty:
-        raise ValueError("No hay registros válidos para la matriz talla-edad con los filtros seleccionados")
     datos["Nº_DE_ANILLOS"] = datos["Nº_DE_ANILLOS"].astype(int)
     datos["GRUPO_EDAD"] = datos["Nº_DE_ANILLOS"].astype(str)
     datos.loc[datos["Nº_DE_ANILLOS"] >= edad_agrupada,
@@ -56,14 +53,15 @@ def generar_matriz_talla_edad(archivo, salida, pesqueria, paso_talla, edad_agrup
 
     # --------------------------------------------------
     # AGRUPAR TALLAS DE 5 EN 5
-    datos["GRUPO_TALLA"] = (np.floor(datos["LONGITUD_DEL_PEZ_(CM)"] / paso_talla) * paso_talla).astype(int)
+    datos["GRUPO_TALLA"] = (
+        np.floor(datos["LONGITUD_DEL_PEZ_(CM)"] / paso_talla) * paso_talla).astype(int)
 
     # --------------------------------------------------
     # SEPARAR MACHOS Y HEMBRAS
     machos = datos[datos["SEXO"] == 1].copy()
     hembras = datos[datos["SEXO"] == 2].copy()
-    matriz_machos = crear_matriz(machos, edad_agrupada)
-    matriz_hembras = crear_matriz(hembras, edad_agrupada)
+    matriz_machos = crear_matriz(machos, edad_agrupada, talla_min, talla_max, paso_talla)
+    matriz_hembras = crear_matriz(hembras, edad_agrupada, talla_min, talla_max, paso_talla)
 
     # --------------------------------------------------
     # EXPORTAR MATRICES A EXCEL
