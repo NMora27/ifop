@@ -210,6 +210,34 @@ La matriz talla–edad utiliza los siguientes criterios:
 - Las edades iguales o superiores a `EDAD_AGRUPADA` se agrupan como `40+`.
 - Se aplica limpieza IQR por sexo y grupo etario.
 
+### Consulta de edad por talla
+
+Las funciones `cargar_clave()` y `asignar_edad()` están en
+`metodos_matematicos.py`. Consultan `claves_edad.py`, una clave estática
+con frecuencias y probabilidades históricas de `UNIDO_2007-2024.xlsx`,
+hoja `2007-2024`, pesquería 25 / Industrial y sexos conocidos 1 y 2.
+La consulta no requiere los Excel ni ejecutar `main.py` previamente.
+Esta clave histórica conserva edades individuales de 1 a 100 años,
+sin agrupación `40+`, suavizado ni limpieza IQR adicional.
+
+```python
+from metodos_matematicos import cargar_clave, asignar_edad
+
+resultado = asignar_edad(123, sexo="hembra")
+print(resultado["edad_asignada"], resultado["opciones"])
+
+clave = cargar_clave()  # suma frecuencias de ambos sexos
+resultado_ambos = asignar_edad(123, clave=clave)
+```
+
+No combinar `clave` y `sexo`. Se entregan hasta tres opciones con
+probabilidades calculadas sobre el total de la clase; los empates se
+informan y se resuelven por edad ascendente. Las reglas fijas son
+`(0,25) → 2`, `[25,35) → 3`, `[35,40] → 4` y `>245 → 37` años.
+Estas reglas tienen `origen="regla_fija"`, probabilidad 1 por decisión
+explícita y frecuencias `None`. Fuera de las reglas, una clase sin
+observaciones produce `ValueError`.
+
 ### BPPALS
 
 El libro conserva las ocho hojas y el diseño original de 2024. En la hoja
