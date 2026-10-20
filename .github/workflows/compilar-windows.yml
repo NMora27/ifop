@@ -35,13 +35,13 @@ jobs:
       - name: Crear ejecutable
         shell: pwsh
         run: |
-          python -m PyInstaller --noconfirm --clean --onefile --name consolidado_IFOP main.py
+          python -m PyInstaller --noconfirm --clean --onefile --name Consolidado_IFOP main.py
           Get-ChildItem -Path dist -Recurse | Format-Table FullName
 
       - name: Preparar paquete
         shell: pwsh
         run: |
-          $ejecutable = Get-ChildItem -Path dist -Recurse -Filter IFOP.exe | Select-Object -First 1
+          $ejecutable = Get-ChildItem -Path dist -Recurse -Filter Consolidado_IFOP.exe | Select-Object -First 1
 
           if ($null -eq $ejecutable) {
             throw "No se encontró IFOP.exe dentro de la carpeta dist."
@@ -50,12 +50,11 @@ jobs:
           New-Item -ItemType Directory -Force -Path paquete\IFOP
           Copy-Item $ejecutable.FullName paquete\IFOP\
           Copy-Item configuracion.txt paquete\IFOP\
-          Copy-Item README.md paquete\IFOP\
-          Set-Content -Path paquete\IFOP\Ejecutar_IFOP.bat -Value "@echo off", "IFOP.exe", "pause"
+          Set-Content -Path paquete\IFOP\Ejecutar_IFOP.bat -Value "@echo off", "consolidado_IFOP.exe", "pause"
 
       - name: Subir paquete
         uses: actions/upload-artifact@v4
         with:
-          name: IFOP-Windows
+          name: Consolidado_IFOP
           path: paquete/IFOP
           retention-days: 30
