@@ -6270,6 +6270,11 @@ def _combinar_estilos(original, actualizado):
     nuevo = ElementTree.fromstring(actualizado)
     etiqueta = lambda nombre: f"{{{ESPACIO_HOJAS}}}{nombre}"
     mapas = {}
+    # ElementTree descarta declaraciones usadas sólo en mc:Ignorable.
+    # Conservamos la cabecera y las extensiones originales sin serializarlas.
+    for _, (prefijo, uri) in ElementTree.iterparse(BytesIO(original), events=("start-ns",)):
+        ElementTree.register_namespace(prefijo, uri)
+    resultado = original
 
     for nombre in ("numFmts", "fonts", "fills", "borders", "cellStyleXfs", "cellXfs"):
         origen = nuevo.find(etiqueta(nombre))
@@ -6293,6 +6298,11 @@ def _combinar_estilos(original, actualizado):
                     if atributo in copia.attrib:
                         valor = int(copia.attrib[atributo])
                         copia.attrib[atributo] = str(mapas.get(tabla, {}).get(valor, valor))
+            if nombre == "cellXfs":
+                # Excel debe aplicar explícitamente los recursos remapeados.
+                # openpyxl omite estas marcas aunque existían en la plantilla.
+                for atributo in ("applyFont", "applyFill", "applyBorder", "applyNumberFormat"):
+                    copia.attrib[atributo] = "1"
             if nombre == "numFmts":
                 clave = int(copia.attrib["numFmtId"])
                 coincidencia = next((int(n.attrib["numFmtId"]) for n in destino
@@ -6313,7 +6323,14 @@ def _combinar_estilos(original, actualizado):
             mapa[clave] = coincidencia
         destino.attrib["count"] = str(len(destino))
         mapas[nombre] = mapa
-    return ElementTree.tostring(base, encoding="utf-8"), mapas["cellXfs"]
+        patron = re.compile(
+            rb"<" + nombre.encode() + rb"\b[^>]*(?:/>|>.*?</" + nombre.encode() + rb">)",
+            re.DOTALL)
+        fragmento = ElementTree.tostring(destino, encoding="utf-8")
+        resultado, cantidad = patron.subn(lambda _: fragmento, resultado, count=1)
+        if cantidad != 1:
+            raise ValueError(f"No se encontró la colección de estilos {nombre} en la plantilla")
+    return resultado, mapas["cellXfs"]
 
 
 def _conservar_estilos_de_plantilla(datos_originales, datos_actualizados, mapa_estilos):
