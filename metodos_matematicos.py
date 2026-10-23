@@ -47,27 +47,45 @@ def calcular_a1_a2(b):
 def calcular_peso(longitud, a, b):
     return a * np.asarray(longitud) ** b
 
-def graficar_regresion(datos, a, b, r, nombre, archivo,columna_longitud="LONGITUD_ESPECIMEN",
-                       columna_peso="PESO_ESPECIMEN"):
+def graficar_regresion(datos, a, b, r, nombre, archivo=None,
+                       columna_longitud="LONGITUD_ESPECIMEN",
+                       columna_peso="PESO_ESPECIMEN", ax=None, grupo=None):
     import matplotlib.pyplot as plt
 
-    longitudes = np.linspace(datos[columna_longitud].min(),datos[columna_longitud].max(), 500)
+    longitudes = np.linspace(datos[columna_longitud].min(), datos[columna_longitud].max(), 500)
     pesos = calcular_peso(longitudes, a, b)
+    figura_propia = ax is None
+    if figura_propia:
+        fig, ax = plt.subplots(figsize=(10, 7))
 
-    plt.figure(figsize=(10, 7))
-    plt.scatter(datos[columna_longitud], datos[columna_peso],
-                alpha=0.4, s=15, label=nombre)
-    plt.plot(longitudes, pesos, linewidth=2,
-             label=f"W = {a:.5f} L^{b:.4f}\nr = {r:.4f}")
-    plt.xlabel("Longitud del espécimen [cm]")
-    plt.ylabel("Peso del espécimen [g]")
-    plt.title(f"Relación longitud-peso - {nombre}")
-    plt.legend()
-    plt.grid(alpha=0.3)
-    plt.tight_layout()
-    plt.savefig(archivo, dpi=300)
-    plt.close()
+    colores = {1: "#1f77b4", 2: "#ff69b4"}
+    if grupo == "Ambos":
+        for sexo, etiqueta in ((1, "Machos"), (2, "Hembras")):
+            subgrupo = datos[datos["SEXO_ESPECIMEN"] == sexo]
+            ax.scatter(subgrupo[columna_longitud], subgrupo[columna_peso],
+                       color=colores[sexo], alpha=0.4, s=15,
+                       label=f"{etiqueta}: N = {len(subgrupo)}")
+    else:
+        color = colores[2] if grupo == "Hembras" else colores[1]
+        ax.scatter(datos[columna_longitud], datos[columna_peso],
+                   color=color, alpha=0.4, s=15, label=f"N = {len(datos)}")
+    color_curva = ("red" if grupo == "Hembras" else "skyblue" if grupo == "Machos"
+                   else "#ff7f0e")
+    ax.plot(longitudes, pesos, linewidth=2, color=color_curva,
+            label=f"W = {a:.5f} L^{b:.4f}\nr = {r:.4f}")
+    ax.set_xlabel("Longitud del espécimen [cm]")
+    ax.set_ylabel("Peso del espécimen [g]")
+    ax.set_title(nombre)
+    ax.legend()
+    ax.grid(alpha=0.3)
+    if figura_propia:
+        try:
+            fig.tight_layout()
+            fig.savefig(archivo, dpi=300)
+        finally:
+            plt.close(fig)
     return archivo
+
 
 def ajustar_regresion_longpeso(datos, columna_longitud="LONGITUD_ESPECIMEN",
                                columna_peso="PESO_ESPECIMEN"):
@@ -137,7 +155,7 @@ def calcular_cook_lineal(datos, x="Nº_DE_ANILLOS", y="LONGITUD_DEL_PEZ_(CM)"):
     return grupo
 
 def calcular_outliers_mad_longpeso(datos, b, log_a,columna_longitud="LONGITUD_ESPECIMEN",
-                                   columna_peso="PESO_ESPECIMEN", umbral=3.5):
+                                   columna_peso="PESO_ESPECIMEN", umbral=3):
     datos = datos[(datos[columna_longitud] > 0) & (datos[columna_peso] > 0)].copy()
     residuos = calcular_residuos_longpeso(datos, b, log_a, columna_longitud, columna_peso)
     puntaje, _, mad = calcular_puntaje_mad(residuos)
@@ -196,7 +214,7 @@ def aplicar_outliers_longpeso(datos, metodo, b, log_a):
     datos_limpios = datos_metodo[~datos_metodo[columna]].copy()
     return datos_metodo, datos_limpios, datos_metodo[columna].sum()
 
-def filtrar_outliers_mad_por_sexo(datos, columna="LONGITUD_DEL_PEZ_(CM)",umbral=2,
+def filtrar_outliers_mad_por_sexo(datos, columna="LONGITUD_DEL_PEZ_(CM)",umbral=3,
                                   columna_sexo="SEXO", sexos=(1, 2)):
     grupos_limpios = []
     resumen = []
@@ -260,6 +278,37 @@ def filtrar_outliers_iqr_por_sexo_edad(datos, columna="LONGITUD_DEL_PEZ_(CM)", c
     return pd.concat(grupos_limpios, ignore_index=True), resumen
 
 
+def filtrar_outliers_mad_por_sexo_edad(datos, columna="LONGITUD_DEL_PEZ_(CM)",
+                                       columna_sexo="SEXO", columna_edad="GRUPO_EDAD",
+                                       umbral=3, sexos=(1, 2)):
+    """Conserva puntajes MAD absolutos <= umbral por sexo y grupo etario.
+
+    Usa el puntaje modificado 0.6745 * (valor - mediana) / MAD.
+    Si MAD es cero, conserva el grupo, como calcular_puntaje_mad.
+    """
+    grupos_limpios = []
+    resumen = []
+
+    for sexo in sexos:
+        datos_sexo = datos[datos[columna_sexo] == sexo].copy()
+        inicial = len(datos_sexo)
+        eliminados_total = 0
+
+        for _, grupo in datos_sexo.groupby(columna_edad):
+            puntaje, _, _ = calcular_puntaje_mad(grupo[columna])
+            filtro = np.abs(puntaje) <= umbral
+            eliminados_total += int((~filtro).sum())
+            grupos_limpios.append(grupo[filtro].copy())
+
+        resumen.append((sexo, inicial, eliminados_total, inicial - eliminados_total))
+
+    limpios = (pd.concat(grupos_limpios, ignore_index=True) if grupos_limpios
+               else datos.iloc[:0].copy())
+    return limpios, resumen
+
+
+
+
 # Clave histórica industrial y reglas de asignación del análisis talla-edad.
 from claves_edad import CLAVE_HEMBRAS, CLAVE_MACHOS, REGLAS_EDAD_FIJA
 
@@ -273,7 +322,7 @@ def cargar_clave(sexo=None):
     """
     valor = sexo.strip().casefold() if isinstance(sexo, str) else sexo
     if isinstance(valor, bool):
-        raise ValueError('Sexo inválido. Use macho/1, hembra/2 o None.')
+        raise ValueError('Sexo inválido. Use macho/1, hembra/2 o None.')  # noqa: TRY004
     if valor in (1, 'macho', 'machos'):
         estructuras = [CLAVE_MACHOS]
     elif valor in (2, 'hembra', 'hembras'):
@@ -305,7 +354,7 @@ def asignar_edad(talla_cm, clave=None, sexo=None):
     Fuera de las reglas, una clase sin datos válidos produce ValueError.
     """
     if isinstance(talla_cm, bool):
-        raise ValueError('La talla debe ser un número positivo en centímetros.')
+        raise ValueError('La talla debe ser un número positivo en centímetros.')  # noqa: TRY004
     try:
         talla = float(talla_cm)
     except (TypeError, ValueError):

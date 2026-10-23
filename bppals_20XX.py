@@ -8,7 +8,7 @@ from lectura import (
     buscar_desembarque,
     leer_frecuencias_colocap,
     leer_matriz_talla_edad,
-    leer_parametros_regresion_iqr,
+    leer_parametros_regresion_mad,
 )
 from metodos_matematicos import asignar_edad, calcular_a1_a2
 from openpyxl import load_workbook
@@ -152,9 +152,9 @@ def generar_bppals(especie, sexo, anio, zona, area, flota_desembarque, archivo_m
     # 1. PREPROCESAMIENTO
     
     # ------------------------------------------------------------
-    # 1.1 LEER REGRESIONES IQR
+    # 1.1 LEER REGRESIONES MAD
     
-    a_machos,b_machos,a_hembras,b_hembras = leer_parametros_regresion_iqr(
+    a_machos,b_machos,a_hembras,b_hembras = leer_parametros_regresion_mad(
         ARCHIVO_REGRESION)
     
     

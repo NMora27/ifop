@@ -184,21 +184,21 @@ def leer_datos_talla_edad(archivo, columnas=None, *, anio=None, especie=None, zo
 
 # ============================================================
 # LECTURAS PARA BPPALSH
-def leer_parametros_regresion_iqr(archivo, encoding=None):
+def leer_parametros_regresion_mad(archivo, encoding=None):
     encoding = encoding or detectar_encoding_csv(archivo)
     datos = pd.read_csv(archivo, sep=";", decimal=",", encoding=encoding)
     datos["_METODO"] = datos["METODO"].astype(str).str.strip().str.upper()
     datos["_GRUPO"] = datos["GRUPO"].astype(str).str.strip().str.upper()
-    datos_iqr = datos[datos["_METODO"] == "IQR"].copy()
-    machos = datos_iqr[datos_iqr["_GRUPO"] == "MACHOS"]
-    hembras = datos_iqr[datos_iqr["_GRUPO"] == "HEMBRAS"]
+    datos_mad = datos[datos["_METODO"] == "MAD"].copy()
+    machos = datos_mad[datos_mad["_GRUPO"] == "MACHOS"]
+    hembras = datos_mad[datos_mad["_GRUPO"] == "HEMBRAS"]
 
     if len(machos) != 1:
         raise ValueError(
-            f"Se esperaba una regresión IQR para Machos y se encontraron {len(machos)}")
+            f"Se esperaba una regresión MAD para Machos y se encontraron {len(machos)}")
     if len(hembras) != 1:
         raise ValueError(
-            f"Se esperaba una regresión IQR para Hembras y se encontraron {len(hembras)}")
+            f"Se esperaba una regresión MAD para Hembras y se encontraron {len(hembras)}")
 
     machos = machos.iloc[0]
     hembras = hembras.iloc[0]

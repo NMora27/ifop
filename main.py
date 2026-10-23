@@ -87,8 +87,9 @@ def main(archivo_configuracion=None):
         talla_max=leer_entero(configuracion, "TALLA_COLOCAP_MAX"),
         paso_talla=leer_entero(configuracion, "PASO_TALLA_COLOCAP"),
         fila_totales=leer_entero(configuracion, "FILA_TOTALES_COLOCAP"))
+    print("========[ -> OK <- ]========")
 
-    print("\n====[ Regresiones ]====", flush=True)
+    print("\n======[ Regresiones ]======", flush=True)
     salida_regresiones = generar_regresiones(
         archivo=resolver_ruta(base, configuracion["ARCHIVO_PALANGRE"]),
         anio=anio,
@@ -99,9 +100,10 @@ def main(archivo_configuracion=None):
         salida_preprocesamiento=resolver_ruta(base, configuracion["SALIDA_PREPROCESAMIENTO"]),
         salida_regresiones=resolver_ruta(base, configuracion["SALIDA_REGRESIONES"]),
         salida_regresiones_excel=resolver_ruta(base, configuracion["SALIDA_REGRESIONES_EXCEL"]),
-        salida_iqr_ambos=resolver_ruta(base, configuracion["SALIDA_IQR_AMBOS"]),
-        salida_iqr_machos=resolver_ruta(base, configuracion["SALIDA_IQR_MACHOS"]),
-        salida_iqr_hembras=resolver_ruta(base, configuracion["SALIDA_IQR_HEMBRAS"]))
+        salida_mad_ambos=resolver_ruta(base, configuracion["SALIDA_MAD_AMBOS"]),
+        salida_mad_machos=resolver_ruta(base, configuracion["SALIDA_MAD_MACHOS"]),
+        salida_mad_hembras=resolver_ruta(base, configuracion["SALIDA_MAD_HEMBRAS"]))
+    print("========[ -> OK <- ]========")
 
     print("\n====[ Clave peso-talla ]====", flush=True)
     salida_matriz = generar_matriz_talla_edad(
@@ -115,9 +117,10 @@ def main(archivo_configuracion=None):
         anio=anio,
         especie=leer_entero(configuracion, "ESPECIE_CODIGO"),
         zona=configuracion["ZONA"])
+    print("========[ -> OK <- ]========")
 
     if ejecutar_bppals:
-        print("\n====[ BPPALS ]====", flush=True)
+        print("\n=========[ BPPALS ]=========", flush=True)
         generar_bppals(
             especie=configuracion["ESPECIE"], sexo=configuracion["SEXO"], anio=anio,
             zona=configuracion["ZONA"], area=configuracion["AREA"],
@@ -133,6 +136,7 @@ def main(archivo_configuracion=None):
             edad_min=leer_entero(configuracion, "EDAD_MIN"),
             edad_max=leer_entero(configuracion, "EDAD_MAX"),
             hoja_colocap=configuracion["NOMBRE_HOJA_COLOCAP"])
+    print("========[ -> OK <- ]========")
 
 if __name__ == "__main__":
     main()

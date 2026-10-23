@@ -33,9 +33,9 @@ SALIDA_PREPROCESAMIENTO={DIRECTORIO_TABLAS}/bacalao_filtrado.csv
 SALIDA_REGRESIONES={DIRECTORIO_TABLAS}/resultados_comparación_regresiones.csv
 SALIDA_REGRESIONES_EXCEL={DIRECTORIO_TABLAS}/resultados_regresiones.xlsx
 DIRECTORIO_GRAFICOS=Graficos
-SALIDA_IQR_AMBOS={DIRECTORIO_TABLAS}/bacalao_filtrado_iqr.csv
-SALIDA_IQR_MACHOS={DIRECTORIO_TABLAS}/bacalao_machos_filtrado_iqr.csv
-SALIDA_IQR_HEMBRAS={DIRECTORIO_TABLAS}/bacalao_hembras_filtrado_iqr.csv
+SALIDA_MAD_AMBOS={DIRECTORIO_TABLAS}/bacalao_filtrado_mad.csv
+SALIDA_MAD_MACHOS={DIRECTORIO_TABLAS}/bacalao_machos_filtrado_mad.csv
+SALIDA_MAD_HEMBRAS={DIRECTORIO_TABLAS}/bacalao_hembras_filtrado_mad.csv
 LATITUD_ZONA_1=-41.28
 LATITUD_ZONA_2=-47
 

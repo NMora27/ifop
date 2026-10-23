@@ -76,16 +76,12 @@ def generar_analisis_colocap(archivo_resumen, archivo_tallas, archivo_sexual, sa
         fmt_num = wb.add_format({"num_format": "0.0000000000"})
         fmt_int = wb.add_format({"num_format": "#,##0"})
         fmt_prop = wb.add_format({"num_format": "0.00000000"})
-        fmt_pivot_header = wb.add_format({"bold": True, "bg_color": "#D9EAF7",
-                                          "border": 1})
-        fmt_pivot_total = wb.add_format({"bold": True, "bg_color": "#D9EAF7",
-                                         "num_format": "0.0000000000"})
 
         ws = wb.add_worksheet(nombre_hoja)
         anchos = {"A": 18, "B": 15, "C": 15, "D": 15, "E": 10, "F": 8,
                   "G": 8, "H": 16, "I": 10, "K": 16, "L": 14, "M": 14,
                   "N": 12, "P": 12, "Q": 14, "R": 14, "S": 14, "T": 14,
-                  "U": 14, "V": 14, "Y": 20, "Z": 17, "AA": 14, "AB": 16}
+                  "U": 14, "V": 14}
 
         for col, ancho in anchos.items():
             ws.set_column(f"{col}:{col}", ancho)
@@ -179,33 +175,6 @@ def generar_analisis_colocap(archivo_resumen, archivo_tallas, archivo_sexual, sa
         ws.write_formula(f"B{fila_tot}", f"=+SUM(B{fila_ini}:B{fila_tot - 1})", fmt_num)
         ws.write_formula(f"C{fila_tot}", f"=+SUM(C{fila_ini}:C{fila_tot - 1})", fmt_num)
         ws.write_formula(f"D{fila_tot}", f"=+SUM(D{fila_ini}:D{fila_tot - 1})", fmt_num)
-
-        # ----------------------------
-        # Bloque F: reproducción de tabla dinámica Y:AB
-        ws.write("Y3", "Suma de PROPORCION", fmt_pivot_header)
-        ws.write("Z3", "Etiquetas de columna", fmt_pivot_header)
-        ws.write("Y4", "Etiquetas de fila", fmt_pivot_header)
-        ws.write("Z4", 1, fmt_pivot_header)
-        ws.write("AA4", 2, fmt_pivot_header)
-        ws.write("AB4", "Total general", fmt_pivot_header)
-
-        fila_pivot = 4
-        for b, p1, p2 in filas_bins:
-            ws.write_number(fila_pivot, 24, b, fmt_int)
-            ws.write_number(fila_pivot, 25, p1, fmt_num)
-            ws.write_number(fila_pivot, 26, p2, fmt_num)
-            ws.write_formula(fila_pivot, 27, f"=SUM(Z{fila_pivot + 1}:AA{fila_pivot + 1})", fmt_num)
-            fila_pivot += 1
-
-        primera_fila_pivot = 5
-        ultima_fila_pivot = fila_pivot
-        ws.write(fila_pivot, 24, "Total general", fmt_pivot_total)
-        ws.write_formula(fila_pivot, 25,
-                         f"=SUM(Z{primera_fila_pivot}:Z{ultima_fila_pivot})", fmt_pivot_total)
-        ws.write_formula(fila_pivot, 26,
-                         f"=SUM(AA{primera_fila_pivot}:AA{ultima_fila_pivot})", fmt_pivot_total)
-        ws.write_formula(fila_pivot, 27,
-                         f"=SUM(AB{primera_fila_pivot}:AB{ultima_fila_pivot})", fmt_pivot_total)
 
         # ----------------------------
         # Hoja Metadatos

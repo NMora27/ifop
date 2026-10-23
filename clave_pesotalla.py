@@ -3,7 +3,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from lectura import leer_datos_talla_edad
-from metodos_matematicos import filtrar_outliers_iqr_por_sexo_edad
+from metodos_matematicos import filtrar_outliers_mad_por_sexo_edad
 from openpyxl import load_workbook
 from openpyxl.styles import Alignment
 
@@ -47,9 +47,9 @@ def generar_matriz_talla_edad(archivo, salida, pesqueria, paso_talla, edad_agrup
               "GRUPO_EDAD"] = f"{edad_agrupada}+"
 
     # --------------------------------------------------
-    # APLICAR LIMPIEZA IQR
-    datos, _resumen_iqr = filtrar_outliers_iqr_por_sexo_edad(
-        datos, columna="LONGITUD_DEL_PEZ_(CM)")
+    # APLICAR LIMPIEZA MAD
+    datos, _resumen_mad = filtrar_outliers_mad_por_sexo_edad(
+        datos, columna="LONGITUD_DEL_PEZ_(CM)", umbral=3)
 
     # --------------------------------------------------
     # AGRUPAR TALLAS DE 5 EN 5

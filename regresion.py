@@ -105,16 +105,16 @@ def exportar_tabla_regresiones(resultados, salida):
 # PROCESO PRINCIPAL
 def generar_regresiones(archivo, anio, especie, latitud_zona_1, latitud_zona_2,
                                 directorio_graficos, salida_preprocesamiento,
-                                salida_regresiones, salida_iqr_ambos,
-                                salida_iqr_machos, salida_iqr_hembras,
+                                salida_regresiones, salida_mad_ambos,
+                                salida_mad_machos, salida_mad_hembras,
                                 salida_regresiones_excel=None):
     archivo = Path(archivo)
     directorio_graficos = Path(directorio_graficos)
     salida_preprocesamiento = Path(salida_preprocesamiento)
     salida_regresiones = Path(salida_regresiones)
-    salida_iqr_ambos = Path(salida_iqr_ambos)
-    salida_iqr_machos = Path(salida_iqr_machos)
-    salida_iqr_hembras = Path(salida_iqr_hembras)
+    salida_mad_ambos = Path(salida_mad_ambos)
+    salida_mad_machos = Path(salida_mad_machos)
+    salida_mad_hembras = Path(salida_mad_hembras)
     directorio_graficos.mkdir(parents=True, exist_ok=True)
 
     # --------------------------------------------------
@@ -146,7 +146,7 @@ def generar_regresiones(archivo, anio, especie, latitud_zona_1, latitud_zona_2,
               "Hembras": {"datos": df[df["SEXO_ESPECIMEN"] == 2].copy(), "origen": "Hembras",
                            "grafico": "Hembras", "archivo": "hembras"}}
     metodos = {"cook": "Cook", "mad": "MAD", "iqr": "IQR"}
-    metodo_bppals = "IQR"
+    metodo_bppals = "MAD"
     resultados = {}
 
     for grupo, info in grupos.items():
@@ -193,21 +193,36 @@ def generar_regresiones(archivo, anio, especie, latitud_zona_1, latitud_zona_2,
     exportar_tabla_regresiones(resultados, salida_excel)
 
     # --------------------------------------------------
-    # GRÁFICOS DE REGRESIÓN
+    # GRÁFICOS DE REGRESIÓN: cuatro métodos en una imagen por grupo
+    import matplotlib.pyplot as plt
+
     for grupo, info in grupos.items():
-        for metodo in ["Original", *metodos.values()]:
-            resultado = resultados[grupo][metodo]
-            sufijo = "" if metodo == "Original" else f"_{metodo.lower()}"
-            nombre = info["grafico"] if metodo == "Original" else f"{info['grafico']} sin {metodo}"
-            archivo_grafico = directorio_graficos / f"grafica_regresion_{info['archivo']}{sufijo}.png"
-            graficar_regresion(resultado["datos"], resultado["a"], resultado["b"],
-                               resultado["r"], nombre, archivo_grafico)
-            print(f"Archivo generado: {Path(archivo_grafico).name}")
+        fig, ejes = plt.subplots(2, 2, figsize=(16, 12), sharex=True, sharey=True)
+        try:
+            fig.suptitle(f"Relación longitud-peso - {info['grafico']}", fontsize=16)
+            for ax, metodo in zip(ejes.flat, ["Original", *metodos.values()]):
+                resultado = resultados[grupo][metodo]
+                n_cook = len(resultados[grupo]["Cook"]["datos_metodo"])
+                titulos = {
+                    "Original": "Sin eliminación (sin umbral)",
+                    "Cook": f"Cook: D ≤ 4/N = {4 / n_cook:.6g} (N = {n_cook})",
+                    "MAD": "MAD: |puntaje| ≤ 3",
+                    "IQR": "IQR: residuos entre Q1 − 3.5 × IQR y Q3 + 3.5 × IQR",
+                }
+                nombre = titulos[metodo]
+                graficar_regresion(resultado["datos"], resultado["a"], resultado["b"],
+                                   resultado["r"], nombre, ax=ax, grupo=grupo)
+            archivo_grafico = directorio_graficos / f"grafica_regresion_{info['archivo']}.png"
+            fig.tight_layout(rect=(0, 0, 1, 0.96))
+            fig.savefig(archivo_grafico, dpi=300)
+        finally:
+            plt.close(fig)
+        print(f"Archivo generado: {archivo_grafico.name}")
 
     # --------------------------------------------------
     # GUARDAR CONJUNTO UTILIZADO POR BPPALS
-    guardar_dataframe(resultados["Ambos"][metodo_bppals]["datos"], salida_iqr_ambos)
-    guardar_dataframe(resultados["Machos"][metodo_bppals]["datos"], salida_iqr_machos)
-    guardar_dataframe(resultados["Hembras"][metodo_bppals]["datos"], salida_iqr_hembras)
+    guardar_dataframe(resultados["Ambos"][metodo_bppals]["datos"], salida_mad_ambos)
+    guardar_dataframe(resultados["Machos"][metodo_bppals]["datos"], salida_mad_machos)
+    guardar_dataframe(resultados["Hembras"][metodo_bppals]["datos"], salida_mad_hembras)
 
     return salida_regresiones
