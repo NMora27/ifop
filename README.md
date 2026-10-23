@@ -5,6 +5,14 @@ Herramienta en Python para automatizar el procesamiento de datos de bacalao de p
 
 La versión actual está configurada para bacalao de profundidad, pero los parámetros principales se modifican desde `configuracion.txt`.
 
+## Descargar ejecutable para Windows
+
+[Descargar Consolidado_IFOP.zip](https://github.com/NMora27/ifop/actions/runs/39608564024/artifacts/12348822570)
+
+Paquete generado el 21 de octubre de 2026. Incluye el ejecutable, `configuracion.txt` y `Ejecutar_IFOP.bat`. Descomprima el ZIP, ajuste la configuración y coloque los archivos de entrada en la misma carpeta antes de ejecutar `Ejecutar_IFOP.bat`.
+
+La descarga requiere iniciar sesión en GitHub con acceso al repositorio. Actions conserva este archivo durante 30 días; al generar un paquete nuevo, se debe actualizar el enlace. También puede consultar las [compilaciones de Windows en Actions](https://github.com/NMora27/ifop/actions/workflows/compilar-windows.yml).
+
 ## Flujo de trabajo
 
 1. Lee los archivos DBF, CSV y Excel de entrada.
