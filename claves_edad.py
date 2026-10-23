@@ -1,5 +1,4 @@
 """Claves históricas por sexo: P(edad | clase de talla, sexo).
-
 Fuente: UNIDO_2007-2024.xlsx, hoja 2007-2024.
 Filtro de pesquería: 25 / Industrial (igual a la tabla dinámica).
 Sexo: 1 = machos; 2 = hembras. Se excluyen sexos desconocidos.
@@ -9,15 +8,13 @@ Estructura: {talla: {edad: {'n': frecuencia, 'probabilidad': proporción}}}.
 Las edades no observadas tienen frecuencia cero; una clase ausente no permite asignar.
 Archivo estático: no requiere Excel ni dependencias externas para su consulta.
 """
-
 # Reglas indicadas por el usuario; prioridad sobre las frecuencias históricas.
 # La probabilidad 1 es una asignación fija, no una certeza empírica.
 REGLAS_EDAD_FIJA = (
     {'minimo': 0, 'maximo': 25, 'incluye_minimo': False, 'incluye_maximo': False, 'edad': 2},
     {'minimo': 25, 'maximo': 35, 'incluye_minimo': True, 'incluye_maximo': False, 'edad': 3},
     {'minimo': 35, 'maximo': 40, 'incluye_minimo': True, 'incluye_maximo': True, 'edad': 4},
-    {'minimo': 245, 'maximo': None, 'incluye_minimo': False, 'incluye_maximo': False, 'edad': 37},
-)
+    {'minimo': 245, 'maximo': None, 'incluye_minimo': False, 'incluye_maximo': False, 'edad': 37},)
 
 FUENTE_SHA256 = 'de14c8aa66cf12eec5cbbbb1d875cb7ee6ef703760662c90831229bd9278d4af'
 REGISTROS_EXCLUIDOS = {'edad inválida': 1521, 'sexo desconocido': 20}

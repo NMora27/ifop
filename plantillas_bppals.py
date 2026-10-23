@@ -6276,7 +6276,7 @@ def _combinar_estilos(original, actualizado):
         ElementTree.register_namespace(prefijo, uri)
     resultado = original
 
-    for nombre in ("numFmts", "fonts", "fills", "borders", "cellStyleXfs", "cellXfs"):
+    for nombre in ("numFmts", "fonts", "fills", "borders", "cellStyleXfs", "cellXfs", "dxfs"):
         origen = nuevo.find(etiqueta(nombre))
         destino = base.find(etiqueta(nombre))
         if origen is None:
@@ -6330,7 +6330,7 @@ def _combinar_estilos(original, actualizado):
         resultado, cantidad = patron.subn(lambda _: fragmento, resultado, count=1)
         if cantidad != 1:
             raise ValueError(f"No se encontró la colección de estilos {nombre} en la plantilla")
-    return resultado, mapas["cellXfs"]
+    return resultado, mapas["cellXfs"], mapas["dxfs"]
 
 
 def _conservar_estilos_de_plantilla(datos_originales, datos_actualizados, mapa_estilos):
@@ -6362,6 +6362,12 @@ def _conservar_estilos_de_plantilla(datos_originales, datos_actualizados, mapa_e
         referencias_originales.add(referencia)
         celda_actualizada = celdas_actualizadas.get(referencia)
         if celda_actualizada is None:
+            # openpyxl omite celdas vaciadas y sin estilo. No recuperar los
+            # valores del ejemplo cuando el proceso las eliminó expresamente.
+            celda_original.attrib.clear()
+            celda_original.attrib.update(r=referencia, s=str(mapa_estilos[0]))
+            celda_original[:] = []
+            celda_original.text = None
             continue
 
         estilo = celda_actualizada.attrib.get("s", celda_original.attrib.get("s"))
@@ -6396,6 +6402,21 @@ def _conservar_estilos_de_plantilla(datos_originales, datos_actualizados, mapa_e
             if referencia not in referencias_originales:
                 fila_original.append(deepcopy(celda_actualizada))
 
+    # Las celdas nuevas deben intercalarse por columna, no quedar al final
+    # detrás de P/Q. Excel y Google Drive pueden omitir las celdas desordenadas.
+    def numero_columna(celda):
+        letras = re.match(r"[A-Z]+", celda.attrib["r"]).group(0)
+        numero = 0
+        for letra in letras:
+            numero = numero * 26 + ord(letra) - ord("A") + 1
+        return numero
+
+    hoja_original[:] = sorted(hoja_original, key=lambda fila: int(fila.attrib["r"]))
+    for fila in hoja_original:
+        fila[:] = sorted(fila, key=numero_columna)
+        if len(fila):
+            fila.attrib["spans"] = f"{numero_columna(fila[0])}:{numero_columna(fila[-1])}"
+
     datos = ElementTree.tostring(hoja_original, encoding="utf-8")
     # El fragmento se inserta dentro de una hoja que ya declara este espacio
     # de nombres; se elimina la declaración redundante para mantener el XML
@@ -6404,7 +6425,7 @@ def _conservar_estilos_de_plantilla(datos_originales, datos_actualizados, mapa_e
     return datos.replace(declaracion, b"", 1)
 
 
-def reemplazar_datos_hoja(original, actualizado, mapa_estilos):
+def reemplazar_datos_hoja(original, actualizado, mapa_estilos, mapa_diferenciales):
     datos_originales = _obtener_datos_hoja(original)
     datos_actualizados = _obtener_datos_hoja(actualizado)
 
@@ -6413,7 +6434,32 @@ def reemplazar_datos_hoja(original, actualizado, mapa_estilos):
 
     datos_con_estilos = _conservar_estilos_de_plantilla(
         datos_originales.group(0), datos_actualizados.group(0), mapa_estilos)
-    return original[:datos_originales.start()] + datos_con_estilos + original[datos_originales.end():]
+    resultado = original[:datos_originales.start()] + datos_con_estilos + original[datos_originales.end():]
+    dimension = re.search(rb"<dimension\b[^>]*/>", actualizado)
+    if dimension is not None:
+        resultado = re.sub(rb"<dimension\b[^>]*/>", lambda _: dimension.group(0),
+                           resultado, count=1)
+    patron_condicional = re.compile(
+        rb"<conditionalFormatting\b[^>]*>.*?</conditionalFormatting>", re.DOTALL)
+    reglas = patron_condicional.findall(actualizado)
+    if reglas:
+        resultado = patron_condicional.sub(b"", resultado)
+        reglas = [re.sub(
+            rb'dxfId="(\d+)"',
+            lambda m: b'dxfId="' + str(mapa_diferenciales[int(m.group(1))]).encode() + b'"',
+            regla) for regla in reglas]
+        # Orden de elementos de worksheet según OOXML: después de mergeCells,
+        # antes de validaciones, hipervínculos y opciones de impresión.
+        siguiente = re.search(
+            rb"<(?:dataValidations|hyperlinks|printOptions|pageMargins|pageSetup|headerFooter|"
+            rb"rowBreaks|colBreaks|customProperties|cellWatches|ignoredErrors|smartTags|"
+            rb"drawing|legacyDrawing|legacyDrawingHF|picture|oleObjects|controls|"
+            rb"webPublishItems|tableParts|extLst)\b|</worksheet>", resultado)
+        if siguiente is None:
+            raise ValueError("No se pudo insertar el formato condicional de la hoja")
+        posicion = siguiente.start()
+        resultado = resultado[:posicion] + b"".join(reglas) + resultado[posicion:]
+    return resultado
 
 def activar_recalculo(libro):
     patron = re.compile(rb"<calcPr[^>]*/>")
@@ -6432,7 +6478,7 @@ def guardar_bppals_con_diseno(libro, sexo, salida):
         with ZipFile(BytesIO(original)) as base, ZipFile(temporal.name) as actualizado, \
              ZipFile(salida, "w", ZIP_DEFLATED) as destino:
 
-            estilos, mapa_estilos = _combinar_estilos(
+            estilos, mapa_estilos, mapa_diferenciales = _combinar_estilos(
                 base.read("xl/styles.xml"), actualizado.read("xl/styles.xml"))
 
             for archivo in base.infolist():
@@ -6441,7 +6487,7 @@ def guardar_bppals_con_diseno(libro, sexo, salida):
                 if archivo.filename.startswith("xl/worksheets/sheet") and \
                    archivo.filename.endswith(".xml"):
                     datos = reemplazar_datos_hoja(
-                        datos, actualizado.read(archivo.filename), mapa_estilos)
+                        datos, actualizado.read(archivo.filename), mapa_estilos, mapa_diferenciales)
 
                 elif archivo.filename == "xl/styles.xml":
                     datos = estilos
