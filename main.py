@@ -4,9 +4,8 @@ from pathlib import Path
 
 from analisis_colocap import generar_analisis_colocap
 from bppals_20XX import generar_bppals
-from regresion import generar_regresiones
-
 from clave_pesotalla import generar_matriz_talla_edad
+from regresion import generar_regresiones
 
 
 # ============================================================
@@ -73,6 +72,7 @@ def main(archivo_configuracion=None):
     anio = leer_entero(configuracion, "ANIO")
     ejecutar_bppals = leer_booleano(configuracion, "EJECUTAR_BPPALS")
 
+    print("\n====[ Análisis Colocap ]====", flush=True)
     salida_colocap = generar_analisis_colocap(
         archivo_resumen=resolver_ruta(base, configuracion["ARCHIVO_RESUMEN"]),
         archivo_tallas=resolver_ruta(base, configuracion["ARCHIVO_TALLAS"]),
@@ -88,6 +88,7 @@ def main(archivo_configuracion=None):
         paso_talla=leer_entero(configuracion, "PASO_TALLA_COLOCAP"),
         fila_totales=leer_entero(configuracion, "FILA_TOTALES_COLOCAP"))
 
+    print("\n====[ Regresiones ]====", flush=True)
     salida_regresiones = generar_regresiones(
         archivo=resolver_ruta(base, configuracion["ARCHIVO_PALANGRE"]),
         anio=anio,
@@ -102,6 +103,7 @@ def main(archivo_configuracion=None):
         salida_iqr_machos=resolver_ruta(base, configuracion["SALIDA_IQR_MACHOS"]),
         salida_iqr_hembras=resolver_ruta(base, configuracion["SALIDA_IQR_HEMBRAS"]))
 
+    print("\n====[ Clave peso-talla ]====", flush=True)
     salida_matriz = generar_matriz_talla_edad(
         archivo=resolver_ruta(base, configuracion["ARCHIVO_TALLA_EDAD"]),
         salida=resolver_ruta(base, configuracion["SALIDA_MATRIZ"]),
@@ -115,6 +117,7 @@ def main(archivo_configuracion=None):
         zona=configuracion["ZONA"])
 
     if ejecutar_bppals:
+        print("\n====[ BPPALS ]====", flush=True)
         generar_bppals(
             especie=configuracion["ESPECIE"], sexo=configuracion["SEXO"], anio=anio,
             zona=configuracion["ZONA"], area=configuracion["AREA"],

@@ -224,5 +224,5 @@ def generar_analisis_colocap(archivo_resumen, archivo_tallas, archivo_sexual, sa
         ws_meta.set_column("A:A", 22)
         ws_meta.set_column("B:B", 70)
 
-    print(f"Archivo generado: {salida}")
+    print(f"Archivo generado: {Path(salida).name}")
     return salida

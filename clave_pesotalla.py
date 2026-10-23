@@ -93,5 +93,5 @@ def generar_matriz_talla_edad(archivo, salida, pesqueria, paso_talla, edad_agrup
                 celda.alignment = Alignment(horizontal="center", vertical="center")
 
     libro.save(salida)
-    print(f"Archivo generado: {salida}")
+    print(f"Archivo generado: {Path(salida).name}")
     return salida

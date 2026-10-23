@@ -31,7 +31,7 @@ def guardar_dataframe(datos, nombre_archivo):
     nombre_archivo = Path(nombre_archivo)
     nombre_archivo.parent.mkdir(parents=True, exist_ok=True)
     datos.to_csv(nombre_archivo, sep=";", decimal=",", index=False)
-    print(f"Archivo generado: {nombre_archivo}")
+    print(f"Archivo generado: {Path(nombre_archivo).name}")
 
 
 def exportar_tabla_regresiones(resultados, salida):
@@ -98,7 +98,7 @@ def exportar_tabla_regresiones(resultados, salida):
             "Los IC de Cook, MAD e IQR se calculan sobre los datos retenidos por cada método.",
         ]}).to_excel(writer, sheet_name="Notas", index=False)
         writer.sheets["Notas"].column_dimensions["A"].width = 115
-    print(f"Archivo generado: {salida}")
+    print(f"Archivo generado: {Path(salida).name}")
 
 
 # ============================================================
@@ -135,7 +135,7 @@ def generar_regresiones(archivo, anio, especie, latitud_zona_1, latitud_zona_2,
     salida_preprocesamiento.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(salida_preprocesamiento, sep=";", index=False)
 
-    print(f"Archivo generado: {salida_preprocesamiento}")
+    print(f"Archivo generado: {Path(salida_preprocesamiento).name}")
 
     # --------------------------------------------------
     # GRUPOS, MÉTODOS Y GRÁFICOS
@@ -187,7 +187,7 @@ def generar_regresiones(archivo, anio, especie, latitud_zona_1, latitud_zona_2,
     salida_regresiones.parent.mkdir(parents=True, exist_ok=True)
     resultados_regresion.to_csv(salida_regresiones, sep=";", decimal=",", index=False)
 
-    print(f"Archivo generado: {salida_regresiones}")
+    print(f"Archivo generado: {Path(salida_regresiones).name}")
     salida_excel = (Path(salida_regresiones_excel) if salida_regresiones_excel is not None
                     else salida_regresiones.with_suffix(".xlsx"))
     exportar_tabla_regresiones(resultados, salida_excel)
@@ -202,7 +202,7 @@ def generar_regresiones(archivo, anio, especie, latitud_zona_1, latitud_zona_2,
             archivo_grafico = directorio_graficos / f"grafica_regresion_{info['archivo']}{sufijo}.png"
             graficar_regresion(resultado["datos"], resultado["a"], resultado["b"],
                                resultado["r"], nombre, archivo_grafico)
-            print(f"Archivo generado: {archivo_grafico}")
+            print(f"Archivo generado: {Path(archivo_grafico).name}")
 
     # --------------------------------------------------
     # GUARDAR CONJUNTO UTILIZADO POR BPPALS
