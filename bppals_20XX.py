@@ -1,17 +1,106 @@
 """Genera BPPALS con los parámetros entregados por main.py."""
 
 import warnings
+from copy import copy
 from pathlib import Path
 
 from lectura import (
     buscar_desembarque,
     leer_frecuencias_colocap,
     leer_matriz_talla_edad,
-    leer_parametros_regresion_iqr,
+    leer_parametros_regresion_mad,
 )
-from metodos_matematicos import calcular_a1_a2
+from metodos_matematicos import asignar_edad, calcular_a1_a2
 from openpyxl import load_workbook
+from openpyxl.formatting.rule import FormulaRule
+from openpyxl.styles import PatternFill
 from plantillas_bppals import cargar_plantilla_bppals, guardar_bppals_con_diseno
+
+
+def completar_clave_talla_edad(hoja, tallas, frecuencias, sexo, paso_talla,
+                              edad_min, edad_max, fila_inicio=75, columna_inicio=7):
+    """Completa las filas cuya verificación daría FALTA CL, sin evaluar fórmulas.
+
+    Una captura positiva con suma de edades cero requiere una clave. El 1
+    agregado representa una asignación estimada, no la cantidad de captura.
+    """
+    asignaciones = []
+    for i, talla in enumerate(tallas):
+        fila = fila_inicio + i
+        captura = frecuencias.get(talla + paso_talla // 2, {}).get(sexo, 0)
+        celdas = [hoja.cell(fila, columna_inicio + edad - edad_min)
+                  for edad in range(edad_min, edad_max + 1)]
+        if captura <= 0 or sum(celda.value or 0 for celda in celdas) > 0:
+            continue
+        try:
+            resultado = asignar_edad(talla + paso_talla / 2, sexo=sexo)
+        except ValueError as error:
+            warnings.warn(f"FALTA CL en {sexo}, talla {talla}: {error}")
+            continue
+        edad = min(resultado['edad_asignada'], edad_max)
+        if edad < edad_min:
+            warnings.warn(f"FALTA CL en {sexo}, talla {talla}: edad estimada "
+                          f"{edad} fuera del rango de la matriz")
+            continue
+        celda = hoja.cell(fila, columna_inicio + edad - edad_min)
+        celda.value = 1
+        fuente = copy(celda.font)
+        fuente.color = 'FFFF0000'
+        celda.font = fuente
+        print(f"Clave completada: {sexo}, talla {talla}, edad "
+              f"{resultado['edad_asignada']} ({resultado['origen']})")
+        asignaciones.append((talla, edad))
+    return asignaciones
+
+
+def destacar_porcentajes_grafico(hoja, cantidad_edades):
+    """Repite los porcentajes mayores o iguales al 5 % y los suma en la columna D."""
+    fila_inicio = 4
+    fila_fin = fila_inicio + cantidad_edades - 1
+    fila_total = fila_fin + 1
+    # Eliminar los cálculos auxiliares antiguos de ambas plantillas.
+    for fila in range(fila_inicio, max(hoja.max_row, fila_total) + 1):
+        for columna in (4, 5):
+            hoja.cell(fila, columna).value = None
+    for fila in range(1, max(hoja.max_row, fila_total) + 1):
+        for columna in (5, 7):
+            celda = hoja.cell(fila, columna)
+            celda.value = None
+            celda.fill = PatternFill(fill_type=None)
+    hoja["D3"] = ">= 5 %"
+    for fila in range(fila_inicio, fila_fin + 1):
+        celda = hoja.cell(fila, 4)
+        celda.value = f'=IF(C{fila}>=5,C{fila},"")'
+        celda._style = copy(hoja.cell(fila, 3)._style)
+        # El amarillo depende del valor, no de las marcas antiguas de la plantilla.
+        celda.fill = PatternFill(fill_type=None)
+    hoja.conditional_formatting.add(
+        f"D{fila_inicio}:D{fila_fin}",
+        FormulaRule(formula=["AND(ISNUMBER(D4),D4>=5)"],
+                    fill=PatternFill(fill_type="solid", fgColor="FFFFFF00")),
+    )
+    hoja.cell(fila_total, 4).value = f"=SUM(D{fila_inicio}:D{fila_fin})"
+    hoja.cell(fila_total, 4).number_format = hoja.cell(fila_fin, 3).number_format
+
+
+def copiar_resumen_tabla_print(tabla, tabla_print, columna_fin):
+    """Refleja Tabla!A61:última_columna69 desde A52, sin datos del ejemplo."""
+    # Borrar todo el bloque anterior, incluidas sus filas intermedias y estilos.
+    for fila in tabla_print.iter_rows(
+            min_row=52, max_row=max(65, tabla_print.max_row),
+            max_col=max(columna_fin, tabla_print.max_column)):
+        for celda in fila:
+            celda.value = None
+            celda._style = None
+
+    for fila_origen in range(61, 70):
+        fila_destino = fila_origen - 9
+        for columna in range(1, columna_fin + 1):
+            origen = tabla.cell(fila_origen, columna)
+            destino = tabla_print.cell(fila_destino, columna)
+            destino._style = copy(origen._style)
+            if origen.value is not None:
+                destino.value = f"=Tabla!{origen.coordinate}"
 
 
 # ============================================================
@@ -63,9 +152,9 @@ def generar_bppals(especie, sexo, anio, zona, area, flota_desembarque, archivo_m
     # 1. PREPROCESAMIENTO
     
     # ------------------------------------------------------------
-    # 1.1 LEER REGRESIONES IQR
+    # 1.1 LEER REGRESIONES MAD
     
-    a_machos,b_machos,a_hembras,b_hembras = leer_parametros_regresion_iqr(
+    a_machos,b_machos,a_hembras,b_hembras = leer_parametros_regresion_mad(
         ARCHIVO_REGRESION)
     
     
@@ -171,13 +260,17 @@ def generar_bppals(especie, sexo, anio, zona, area, flota_desembarque, archivo_m
     
     # Limpiar valores antiguos de la plantilla
     for fila in range(FILA_CLAVE_INICIO,FILA_CLAVE_PLANTILLA_FIN + 1):
-        for columna in range(1,COL_EDAD_FIN + 1):
+        for columna in range(2,COL_EDAD_FIN + 1):
             ws_clave.cell(fila,columna).value = None
     
     for fila in range(FILA_PROB_INICIO,FILA_PROB_PLANTILLA_FIN + 1):
         for columna in range(2,COL_EDAD_FIN + 1):
             ws_clave.cell(fila,columna).value = None
 
+    # La limpieza de datos excluye A: conservar la columna de verificación.
+    # Quitar únicamente fórmulas del ejemplo fuera de las clases utilizadas.
+    for fila in range(FILA_CLAVE_FIN + 1, FILA_CLAVE_PLANTILLA_FIN + 1):
+        ws_clave.cell(fila, 1).value = None
     ws_clave["A74"] = "VERIFICACIÓN"
     
     # ------------------------------------------------------------
@@ -297,6 +390,10 @@ def generar_bppals(especie, sexo, anio, zona, area, flota_desembarque, archivo_m
             ws_colocap.cell(fila,4).value = None
     
     
+    completar_clave_talla_edad(
+        ws_clave, tallas, frecuencias_colocap, SEXO, PASO_TALLA,
+        EDAD_MIN, EDAD_MAX, FILA_CLAVE_INICIO, COL_EDAD_INICIO)
+
     # ============================================================
     # 7. GENERAR HOJA COMP.CAPT.
     
@@ -482,8 +579,8 @@ def generar_bppals(especie, sexo, anio, zona, area, flota_desembarque, archivo_m
     # ------------------------------------------------------------
     # 9.1 TÍTULOS Y METADATOS
     ws_graf["A1"] = "Composición del desembarque en número (%)"
-    ws_graf["G1"] = f"Composición del desembarque en número (%) de {ESPECIE.lower()}"
-    ws_graf["G2"] = "=Clave!$T$71"
+    ws_graf["H1"] = f"Composición del desembarque en número (%) de {ESPECIE.lower()}"
+    ws_graf["H2"] = "=Clave!$T$71"
     ws_graf["J2"] = "=Clave!$K$71"
     ws_graf["L2"] = "=Clave!$AB$71"
     
@@ -500,11 +597,7 @@ def generar_bppals(especie, sexo, anio, zona, area, flota_desembarque, archivo_m
         ws_graf.cell(fila,2).value = f"{EDAD_MAX}+" if edad == EDAD_MAX else edad
         ws_graf.cell(fila,3).value = f"='Comp.Capt.'!{letra_comp}$63"
     
-    # Cálculos auxiliares existentes en la plantilla
-    ws_graf["D10"] = "=SUM(C9:C10)"
-    ws_graf["D20"] = "=SUM(C19:C20)"
-    ws_graf["D25"] = "=SUM(C23:C25)"
-    ws_graf["E25"] = "=D10+D20+D25"
+    destacar_porcentajes_grafico(ws_graf, len(edades))
     
     
     # ============================================================
@@ -576,9 +669,7 @@ def generar_bppals(especie, sexo, anio, zona, area, flota_desembarque, archivo_m
     # 11. GENERAR HOJA DISTR.CAPT.Nº
     
     FILA_DISTR_INICIO = 4
-    FILA_DISTR_PLANTILLA_FIN = 45
-    tallas_distr = tallas[:FILA_DISTR_PLANTILLA_FIN - FILA_DISTR_INICIO + 1]
-    FILA_DISTR_FIN = FILA_DISTR_INICIO + len(tallas_distr) - 1
+    FILA_DISTR_FIN = FILA_DISTR_INICIO + len(tallas) - 1
     
     # ------------------------------------------------------------
     # 11.1 ENCABEZADOS
@@ -603,7 +694,7 @@ def generar_bppals(especie, sexo, anio, zona, area, flota_desembarque, archivo_m
     # ------------------------------------------------------------
     # 11.3 DISTRIBUCIÓN POR TALLA
     
-    for i,talla in enumerate(tallas_distr):
+    for i,talla in enumerate(tallas):
         fila = FILA_DISTR_INICIO + i
         fila_tabla = FILA_TABLA_INICIO + i
         marca_clase = talla + PASO_TALLA // 2
@@ -640,8 +731,7 @@ def generar_bppals(especie, sexo, anio, zona, area, flota_desembarque, archivo_m
     # 12. GENERAR HOJA TABLA PRINT
     
     FILA_PRINT_INICIO = 8
-    FILA_PRINT_PLANTILLA_FIN = 51
-    tallas_print = tallas[:FILA_PRINT_PLANTILLA_FIN - FILA_PRINT_INICIO + 1]
+#    FILA_PRINT_FIN = FILA_PRINT_INICIO + len(tallas) - 1
     
     # ------------------------------------------------------------
     # 12.1 TÍTULO
@@ -660,14 +750,14 @@ def generar_bppals(especie, sexo, anio, zona, area, flota_desembarque, archivo_m
     
     # ------------------------------------------------------------
     # 12.3 LIMPIAR TABLA ANTIGUA
-    for fila in range(FILA_PRINT_INICIO,FILA_PRINT_PLANTILLA_FIN + 1):
+    for fila in range(8,51):
         for columna in range(1,COL_COMP_EDAD_FIN + 1):
             ws_print.cell(fila,columna).value = None
     
     # ------------------------------------------------------------
     # 12.4 COMPOSICIÓN TALLA-EDAD
     
-    for i in range(len(tallas_print)):
+    for i in range(len(tallas)):
         fila_print = FILA_PRINT_INICIO + i
         fila_tabla = FILA_TABLA_INICIO + i
         ws_print.cell(fila_print,1).value = f"=Tabla!A{fila_tabla}"
@@ -680,27 +770,20 @@ def generar_bppals(especie, sexo, anio, zona, area, flota_desembarque, archivo_m
                 f"=Tabla!{letra}{fila_tabla}"
     
     # ------------------------------------------------------------
-    # 12.5 RESÚMENES
-    filas_print = { 53: 61,     # Total
-                    55: 63,     # Porcentaje
-                    57: 65,     # Talla promedio
-                    59: 67,     # Varianza
-                    61: 69 }    # Peso promedio
+    # 12.5 LIMPIAR CLASE SOBRANTE
+    for columna in range(1,COL_COMP_EDAD_FIN + 1):
+        ws_print.cell(50,columna).value = None
     
-    for fila_print,fila_tabla in filas_print.items():
-        ws_print.cell(fila_print,1).value = f"=Tabla!A{fila_tabla}"
-    
-        for columna in range(5,COL_COMP_EDAD_FIN + 1):
-            letra = ws_print.cell(fila_print,columna).column_letter
-            ws_print.cell(fila_print,columna).value = \
-                f"=Tabla!{letra}{fila_tabla}"
-    
-    
+    # ------------------------------------------------------------
+    # 12.6 RESÚMENES
+    copiar_resumen_tabla_print(ws_tabla, ws_print, COL_COMP_EDAD_FIN)
+
+
     # ============================================================
     # 13. GUARDAR ARCHIVO
     
     guardar_bppals_con_diseno(wb, SEXO, SALIDA)
-    print(f"Archivo generado: {SALIDA}")
+    print(f"Archivo generado: {Path(SALIDA).name}")
     
 
     return SALIDA

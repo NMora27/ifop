@@ -1,4 +1,5 @@
 """Ejecuta el flujo completo de automatización para bacalao de profundidad."""
+import sys
 from pathlib import Path
 
 from analisis_colocap import generar_analisis_colocap
@@ -67,7 +68,7 @@ def leer_booleano(configuracion, clave):
 # ============================================================
 # PROCESO PRINCIPAL
 def main(archivo_configuracion=None):
-    base = Path(__file__).resolve().parent
+    base = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent
     archivo_configuracion = archivo_configuracion or base / "configuracion.txt"
     configuracion = leer_configuracion(archivo_configuracion)
     anio = leer_entero(configuracion, "ANIO")
@@ -98,9 +99,9 @@ def main(archivo_configuracion=None):
         salida_preprocesamiento=resolver_ruta(base, configuracion["SALIDA_PREPROCESAMIENTO"]),
         salida_regresiones=resolver_ruta(base, configuracion["SALIDA_REGRESIONES"]),
         salida_regresiones_excel=resolver_ruta(base, configuracion["SALIDA_REGRESIONES_EXCEL"]),
-        salida_iqr_ambos=resolver_ruta(base, configuracion["SALIDA_IQR_AMBOS"]),
-        salida_iqr_machos=resolver_ruta(base, configuracion["SALIDA_IQR_MACHOS"]),
-        salida_iqr_hembras=resolver_ruta(base, configuracion["SALIDA_IQR_HEMBRAS"]))
+        salida_mad_ambos=resolver_ruta(base, configuracion["SALIDA_MAD_AMBOS"]),
+        salida_mad_machos=resolver_ruta(base, configuracion["SALIDA_MAD_MACHOS"]),
+        salida_mad_hembras=resolver_ruta(base, configuracion["SALIDA_MAD_HEMBRAS"]))
 
     salida_matriz = generar_matriz_talla_edad(
         archivo=resolver_ruta(base, configuracion["ARCHIVO_TALLA_EDAD"]),
@@ -108,6 +109,8 @@ def main(archivo_configuracion=None):
         pesqueria=leer_cadena(configuracion, "PESQUERIA_TALLA_EDAD"),
         paso_talla=leer_entero(configuracion, "PASO_TALLA_MATRIZ"),
         edad_agrupada=leer_entero(configuracion, "EDAD_AGRUPADA"),
+        talla_min=leer_entero(configuracion, "TALLA_MIN_MATRIZ"),
+        talla_max=leer_entero(configuracion, "TALLA_MAX_MATRIZ"),
         anio=anio,
         especie=leer_entero(configuracion, "ESPECIE_CODIGO"),
         zona=configuracion.get("ZONA_TALLA_EDAD", ""))

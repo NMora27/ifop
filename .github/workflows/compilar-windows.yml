@@ -1,0 +1,60 @@
+name: Compilar IFOP para Windows
+
+on:
+  workflow_dispatch:
+
+jobs:
+  compilar:
+    runs-on: windows-latest
+
+    steps:
+      - name: Descargar código
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Verificar archivos descargados
+        shell: pwsh
+        run: |
+          Get-Location
+          Get-ChildItem -Force
+          if (-not (Test-Path .\main.py)) {
+            throw "No se encontró main.py después de descargar el repositorio."
+          }
+
+      - name: Instalar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy pandas scipy openpyxl matplotlib dbfread xlsxwriter pyinstaller
+
+      - name: Crear ejecutable
+        shell: pwsh
+        run: |
+          python -m PyInstaller --noconfirm --clean --onefile --name Consolidado_IFOP main.py
+          Get-ChildItem -Path dist -Recurse | Format-Table FullName
+
+      - name: Preparar paquete
+        shell: pwsh
+        run: |
+          $ejecutable = Get-ChildItem -Path dist -Recurse -Filter Consolidado_IFOP.exe | Select-Object -First 1
+
+          if ($null -eq $ejecutable) {
+            throw "No se encontró IFOP.exe dentro de la carpeta dist."
+          }
+
+          New-Item -ItemType Directory -Force -Path paquete\IFOP
+          Copy-Item $ejecutable.FullName paquete\IFOP\
+          Copy-Item configuracion.txt paquete\IFOP\
+          Set-Content -Path paquete\IFOP\Ejecutar_IFOP.bat -Value "@echo off", "consolidado_IFOP.exe", "pause"
+
+      - name: Subir paquete
+        uses: actions/upload-artifact@v4
+        with:
+          name: Consolidado_IFOP
+          path: paquete/IFOP
+          retention-days: 30

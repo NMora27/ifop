@@ -5,6 +5,17 @@ Herramienta en Python para automatizar el procesamiento de datos de bacalao de p
 
 La versión actual está configurada para bacalao de profundidad, pero los parámetros principales se modifican desde `configuracion.txt`.
 
+## Ejecutable Windows
+
+El flujo `.github/workflows/compilar-windows.yml` permite compilar la rama
+seleccionada desde GitHub Actions (`workflow_dispatch`). Descargue el paquete,
+descomprímalo y coloque las fuentes 2024 junto al ejecutable y
+`configuracion.txt`; ejecute `Ejecutar_IFOP.bat`. La configuración se busca
+junto al ejecutable, también con PyInstaller.
+
+Esta rama requiere exclusivamente las fuentes 2024 descritas abajo; cambiar
+`ANIO` no habilita los formatos de 2025/2026.
+
 ## Flujo de trabajo
 
 1. Lee los archivos DBF, CSV y Excel de entrada.
@@ -12,7 +23,7 @@ La versión actual está configurada para bacalao de profundidad, pero los pará
 3. Calcula regresiones longitud–peso para machos, hembras y ambos sexos.
 4. Aplica los métodos Cook, MAD e IQR como comparación de limpieza.
 5. Genera gráficos de regresión y archivos de respaldo.
-6. Crea matrices talla–edad depuradas mediante IQR.
+6. Crea matrices talla–edad depuradas mediante MAD.
 7. Construye el libro BPPALS para el sexo seleccionado.
 
 ## Requisitos
@@ -156,19 +167,20 @@ Ambos exportan `a`, `b` y `r²` con 7 decimales como máximo. El Excel muestra
 | Archivo | Descripción |
 |---|---|
 | `{AÑO}_Bp_Analisis_Colocap.xlsx` | Análisis COLOCAP generado desde los archivos DBF. |
-| `resultados_regresiones.csv` | Parámetros `a`, `b`, `r_PEARSON`, `r²`, registros utilizados y eliminados para cada método. |
+| `resultados_comparación_regresiones.csv` | Parámetros `a`, `b`, `r_PEARSON`, `r²`, registros utilizados y eliminados para cada método. |
 | `resultados_regresiones.xlsx` | Tabla con `a`, `b`, `r²` y `N` para machos, hembras y ambos, e intervalos de confianza del 95 % de `a` y `b`. Hojas Original, Cook, MAD e IQR. |
 | `bacalao_filtrado.csv` | Datos de palangre filtrados durante el preprocesamiento. |
-| `bacalao_filtrado_iqr.csv` | Datos de ambos sexos filtrados mediante IQR. |
-| `bacalao_machos_filtrado_iqr.csv` | Datos de machos filtrados mediante IQR. |
-| `bacalao_hembras_filtrado_iqr.csv` | Datos de hembras filtrados mediante IQR. |
+| `bacalao_filtrado_mad.csv` | Datos de ambos sexos filtrados mediante MAD. |
+| `bacalao_machos_filtrado_mad.csv` | Datos de machos filtrados mediante MAD. |
+| `bacalao_hembras_filtrado_mad.csv` | Datos de hembras filtrados mediante MAD. |
 | `matriz_talla_edad_pesqueria25.xlsx` | Matrices talla–edad depuradas, separadas en hojas de Machos y Hembras. |
 | `BPPALSM{AÑO}_generado.xlsx` | Libro BPPALS generado cuando `SEXO=Machos`. |
 | `BPPALSH{AÑO}_generado.xlsx` | Libro BPPALS generado cuando `SEXO=Hembras`. |
 
 ### Carpeta `Graficos/`
 
-Se generan gráficos de dispersión y curvas longitud–peso para:
+Se genera una imagen por grupo, con cuatro paneles (Original, Cook, MAD e IQR),
+con gráficos de dispersión y curvas longitud–peso para:
 
 - Ambos sexos.
 - Machos.
@@ -194,7 +206,7 @@ donde:
 - `L` corresponde a la longitud.
 - `a` y `b` son los parámetros estimados.
 
-Los métodos Cook y MAD se generan como respaldo y comparación. El conjunto utilizado por BPPALS corresponde al filtrado mediante IQR.
+Los métodos Cook e IQR se generan como respaldo y comparación. El conjunto utilizado por BPPALS corresponde al filtrado mediante MAD (umbral 3).
 
 ### Matriz talla–edad
 
@@ -208,7 +220,8 @@ La matriz talla–edad utiliza los siguientes criterios:
 - Se excluyen longitudes iguales o menores que cero.
 - Las tallas se agrupan según `PASO_TALLA_MATRIZ`.
 - Las edades iguales o superiores a `EDAD_AGRUPADA` se agrupan como `40+`.
-- Se aplica limpieza IQR por sexo y grupo etario.
+- Se aplica limpieza MAD por sexo y grupo etario (umbral 3).
+- Se incluyen las clases definidas por `TALLA_MIN_MATRIZ` y `TALLA_MAX_MATRIZ`, incluso sin observaciones.
 
 ### Consulta de edad por talla
 
@@ -240,9 +253,25 @@ observaciones produce `ValueError`.
 
 ### BPPALS
 
-El libro conserva las ocho hojas y el diseño original de 2024. En la hoja
+El libro conserva las ocho hojas y el diseño 2025 utilizado en `main`,
+incluidos gráficos, estilos, fórmulas y configuración de impresión.
+El rango BPPALS configurado es 35–249 cm, con paso de 5 cm. En la hoja
 `Clave`, la columna `VERIFICACIÓN` informa `CL OK` cuando una clase con captura
-tiene datos de clave, o `FALTA CL` cuando no los tiene.
+tiene datos de clave, o `FALTA CL` cuando no los tiene. El encabezado está
+en `A74` y las fórmulas desde `A75` consultan `Colocap!C` para Machos
+y `Colocap!D` para Hembras.
+
+Como en `main`, las clases con captura positiva sin edades se completan con
+un **1 en rojo** en la edad más probable de la clave histórica industrial.
+Es una asignación estimada, no una muestra observada. Las filas con datos
+observados se conservan; si no hay referencia válida se emite un aviso.
+Excel recalcula las fórmulas al abrir el libro.
+
+La matriz superior de `Clave` calcula la probabilidad de pertenencia a cada
+edad dividiendo su frecuencia por el total de la clase de talla.
+En `Graf.`, `D4:D40` conserva los porcentajes de C mayores o iguales a 5
+(incluido exactamente 5 %); `D41` suma esos valores. C utiliza la escala
+0–100. El formato condicional resalta los valores seleccionados en amarillo.
 
 ## Problemas frecuentes
 

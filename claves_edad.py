@@ -5,11 +5,8 @@ Sexo: 1 = machos; 2 = hembras. Se excluyen sexos desconocidos.
 Edades enteras entre 1 y 100 años; sin agrupación 40+.
 Clases [talla, talla + 5) cm según tl_5cm. Sin suavizado.
 Estructura: {talla: {edad: {'n': frecuencia, 'probabilidad': proporción}}}.
-Las edades no observadas tienen frecuencia cero; una clase ausente no permite asignar.
-Archivo estático: no requiere Excel ni dependencias externas para su consulta.
 """
-# Reglas indicadas por el usuario; prioridad sobre las frecuencias históricas.
-# La probabilidad 1 es una asignación fija, no una certeza empírica.
+
 REGLAS_EDAD_FIJA = (
     {'minimo': 0, 'maximo': 25, 'incluye_minimo': False, 'incluye_maximo': False, 'edad': 2},
     {'minimo': 25, 'maximo': 35, 'incluye_minimo': True, 'incluye_maximo': False, 'edad': 3},

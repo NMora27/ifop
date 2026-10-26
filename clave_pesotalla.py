@@ -2,39 +2,39 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from lectura import leer_datos_talla_edad
+from metodos_matematicos import filtrar_outliers_mad_por_sexo_edad
 from openpyxl import load_workbook
 from openpyxl.styles import Alignment
-
-from lectura import leer_datos_talla_edad
-from metodos_matematicos import filtrar_outliers_iqr_por_sexo_edad
 
 
 # ============================================================
 # CREAR MATRIZ TALLA-EDAD
-def crear_matriz(datos, edad_agrupada):
+def crear_matriz(datos, edad_agrupada, talla_min, talla_max, paso_talla):
     matriz = pd.crosstab(index=datos["GRUPO_TALLA"], columns=datos["GRUPO_EDAD"])
     edades = [str(i) for i in range(1, edad_agrupada) if str(i) in matriz.columns]
 
     if f"{edad_agrupada}+" in matriz.columns:
         edades.append(f"{edad_agrupada}+")
 
-    matriz = matriz[edades]
+    tallas = list(range(talla_min, talla_max + 1, paso_talla))
+    matriz = matriz.reindex(index=tallas, columns=edades, fill_value=0)
+    matriz.index.name = "GRUPO_TALLA"
     matriz["Total general"] = matriz.sum(axis=1)
     matriz.loc["Total general"] = matriz.sum(axis=0)
     return matriz.replace(0, "")
 
-
 # ============================================================
 # PROCESO PRINCIPAL
 def generar_matriz_talla_edad(archivo, salida, pesqueria, paso_talla, edad_agrupada,
-                              anio=None, especie=None, zona=None):
+                              talla_min, talla_max, anio=None, especie=None, zona=None):
     archivo = Path(archivo)
     salida = Path(salida)
     columnas = ["Longitud", "N°Anillos", "Pesqueria", "Sexo"]
 
     # --------------------------------------------------
     # LECTURA
-    datos = leer_datos_talla_edad(archivo, columnas, anio=anio, especie=especie, zona=zona)
+    datos = leer_datos_talla_edad(archivo, columnas)
 
     # --------------------------------------------------
     # FILTROS
@@ -47,20 +47,21 @@ def generar_matriz_talla_edad(archivo, salida, pesqueria, paso_talla, edad_agrup
               "GRUPO_EDAD"] = f"{edad_agrupada}+"
 
     # --------------------------------------------------
-    # APLICAR LIMPIEZA IQR
-    datos, _resumen_iqr = filtrar_outliers_iqr_por_sexo_edad(
-        datos, columna="Longitud")
+    # APLICAR LIMPIEZA MAD
+    datos, _resumen_mad = filtrar_outliers_mad_por_sexo_edad(
+        datos, columna="Longitud", umbral=3)
 
     # --------------------------------------------------
     # AGRUPAR TALLAS DE 5 EN 5
-    datos["GRUPO_TALLA"] = (np.floor(datos["Longitud"] / paso_talla) * paso_talla).astype(int)
+    datos["GRUPO_TALLA"] = (
+        np.floor(datos["Longitud"] / paso_talla) * paso_talla).astype(int)
 
     # --------------------------------------------------
     # SEPARAR MACHOS Y HEMBRAS
     machos = datos[datos["Sexo"] == 1].copy()
     hembras = datos[datos["Sexo"] == 2].copy()
-    matriz_machos = crear_matriz(machos, edad_agrupada)
-    matriz_hembras = crear_matriz(hembras, edad_agrupada)
+    matriz_machos = crear_matriz(machos, edad_agrupada, talla_min, talla_max, paso_talla)
+    matriz_hembras = crear_matriz(hembras, edad_agrupada, talla_min, talla_max, paso_talla)
 
     # --------------------------------------------------
     # EXPORTAR MATRICES A EXCEL
@@ -92,5 +93,5 @@ def generar_matriz_talla_edad(archivo, salida, pesqueria, paso_talla, edad_agrup
                 celda.alignment = Alignment(horizontal="center", vertical="center")
 
     libro.save(salida)
-    print(f"Archivo generado: {salida}")
+    print(f"Archivo generado: {Path(salida).name}")
     return salida
