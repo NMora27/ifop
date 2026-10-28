@@ -6,7 +6,7 @@ La versión actual está configurada para bacalao de profundidad, pero los pará
 
 ## Descargar ejecutable para Windows
 
-[Descargar Consolidado_IFOP.zip](https://github.com/NMora27/ifop/actions/runs/39979288484/artifacts/12512133912)
+[Descargar Consolidado_IFOP.zip](https://github.com/NMora27/ifop/releases/download/v1.0.0/Consolidado_IFOP.zip)
 
 Incluye el ejecutable, `configuracion.txt` y `Ejecutar_IFOP.bat`. Descomprima el ZIP, ajuste la configuración y coloque los archivos de entrada en la misma carpeta antes de ejecutar `Ejecutar_IFOP.bat`.
 
