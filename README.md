@@ -6,15 +6,7 @@ Herramienta en Python para automatizar el procesamiento de datos de bacalao de p
 La versión actual está configurada para bacalao de profundidad, pero los parámetros principales se modifican desde `configuracion.txt`.
 
 ## Ejecutable Windows
-
-El flujo `.github/workflows/compilar-windows.yml` permite compilar la rama
-seleccionada desde GitHub Actions (`workflow_dispatch`). Descargue el paquete,
-descomprímalo y coloque las fuentes 2024 junto al ejecutable y
-`configuracion.txt`; ejecute `Ejecutar_IFOP.bat`. La configuración se busca
-junto al ejecutable, también con PyInstaller.
-
-Esta rama requiere exclusivamente las fuentes 2024 descritas abajo; cambiar
-`ANIO` no habilita los formatos de 2025/2026.
+Descargar aquí → [Consolidado_IFOP_2024.zip](https://github.com/NMora27/ifop/actions/runs/40513887416/artifacts/12739055210)
 
 ## Flujo de trabajo
 
