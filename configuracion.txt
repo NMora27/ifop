@@ -1,64 +1,55 @@
-# ============================================================
-# CONFIGURACIÓN GENERAL
-ANIO=2025
+# Único archivo de configuración para ambas especies.
+# Para cambiar de especie, edite únicamente ESPECIE en GENERAL.
+# Opciones: MERLUZA DEL SUR o BACALAO DE PROFUNDIDAD.
+# Rutas relativas a este TXT. {ANIO} se sustituye por el año elegido.
+
+[GENERAL]
 ESPECIE=BACALAO DE PROFUNDIDAD
-ESPECIE_CODIGO=37
-SEXO=Hembras
-ZONA=Palangre
-AREA=área sur austral
-FLOTA_DESEMBARQUE=Palangre Fábrica
-EJECUTAR_BPPALS=SI
+ANIO=2025
 DIRECTORIO_TABLAS=Tablas
+EJECUTAR_COLOCAP=SI
+EJECUTAR_REGRESIONES=SI
+EJECUTAR_CLAVES=SI
+EJECUTAR_COMPOSICION=SI
+GENERAR_GRAFICOS=SI
 
-# ============================================================
-# ANÁLISIS COLOCAP
-ARCHIVO_RESUMEN=E_Resumen.DBF
-ARCHIVO_TALLAS=ET_Estructura_de_Tallas.DBF
-ARCHIVO_SEXUAL=ET_Proporción_Sexual.DBF
-SALIDA_COLOCAP={DIRECTORIO_TABLAS}/{ANIO}_Bp_Analisis_Colocap.xlsx
-NOMBRE_HOJA_COLOCAP=Industrial (Palangre)_{ANIO}
-TITULO_HOJA_COLOCAP=A Colocap {ANIO} Industrial
-TITULO_BLOQUE_COLOCAP=COLOCAP 2023_SP37
-PESQUERIA_COLOCAP=1
-TALLA_COLOCAP_MIN=35
-TALLA_COLOCAP_MAX=250
-PASO_TALLA_COLOCAP=5
-FILA_TOTALES_COLOCAP=56
+[MERLUZA ARCHIVOS]
+ARCHIVO_TALLA_EDAD=inputs_MS/Input_3_Clave_talla-edad/{ANIO}_sp2_unido.xlsx
+ARCHIVO_PESO_LONGITUD=inputs_MS/Input_2_Relación_W-L/Sp2-{ANIO}.xlsx
+ARCHIVO_DESEMBARQUE_INDUSTRIAL=inputs_MS/Input_4/{ANIO}_indutrial_desembarque.xlsx
+HOJA_DESEMBARQUE_INDUSTRIAL=Sernapesca {ANIO} para edad
+ARCHIVO_DESEMBARQUE_ARTESANAL=inputs_MS/Input_4/{ANIO}_artesanal_desembarque.xlsx
+HOJA_DESEMBARQUE_ARTESANAL=Hoja1
 
-# ============================================================
-# REGRESIÓN LONGITUD-PESO
-# Ruta del Excel Palangre. El nombre debe incluir Palangre y {ANIO}.
-ARCHIVO_PALANGRE=Palangre_{ANIO}.xlsx
-SALIDA_PREPROCESAMIENTO={DIRECTORIO_TABLAS}/bacalao_filtrado.csv
-SALIDA_REGRESIONES={DIRECTORIO_TABLAS}/resultados_comparación_regresiones.csv
-SALIDA_REGRESIONES_EXCEL={DIRECTORIO_TABLAS}/resultados_regresiones.xlsx
-DIRECTORIO_GRAFICOS=Graficos
-SALIDA_MAD_AMBOS={DIRECTORIO_TABLAS}/bacalao_filtrado_mad.csv
-SALIDA_MAD_MACHOS={DIRECTORIO_TABLAS}/bacalao_machos_filtrado_mad.csv
-SALIDA_MAD_HEMBRAS={DIRECTORIO_TABLAS}/bacalao_hembras_filtrado_mad.csv
-LATITUD_ZONA_1=-41.28
-LATITUD_ZONA_2=-47
+[MERLUZA ARRASTRE]
+ARCHIVO_RESUMEN=inputs_MS/Input_1_Frecuencia ponderada/Arrastre/E_Resumen.DBF
+ARCHIVO_TALLAS=inputs_MS/Input_1_Frecuencia ponderada/Arrastre/ET_Estructura_de_Tallas.DBF
+ARCHIVO_SEXUAL=inputs_MS/Input_1_Frecuencia ponderada/Arrastre/ET_Proporción_Sexual.DBF
+CELDAS_DESEMBARQUE_NORTE=E5; E6; E8; D8
+CELDAS_DESEMBARQUE_SUR=F5; F6; F8
 
-# ============================================================
-# MATRIZ TALLA-EDAD
-ARCHIVO_TALLA_EDAD=Unido_Bacalao_de_profundidad_{ANIO}.xlsx
-# Hasta 2025 se filtra por PESQUERIA_TALLA_EDAD; desde 2026 por año y especie.
-# Desde 2026: ZONA_TALLA_EDAD vacía incluye todas las zonas; indicar un valor para filtrar.
-ZONA_TALLA_EDAD=
-SALIDA_MATRIZ={DIRECTORIO_TABLAS}/matriz_talla_edad_pesqueria25.xlsx
-PESQUERIA_TALLA_EDAD=25
-PASO_TALLA_MATRIZ=5
-EDAD_AGRUPADA=40
-TALLA_MIN_MATRIZ={TALLA_MIN}
-TALLA_MAX_MATRIZ={TALLA_MAX}
+[MERLUZA PALANGRE]
+ARCHIVO_RESUMEN=inputs_MS/Input_1_Frecuencia ponderada/Palangre/E_Resumen.DBF
+ARCHIVO_TALLAS=inputs_MS/Input_1_Frecuencia ponderada/Palangre/ET_Estructura_de_Tallas.DBF
+ARCHIVO_SEXUAL=inputs_MS/Input_1_Frecuencia ponderada/Palangre/ET_Proporción_Sexual.DBF
+CELDAS_DESEMBARQUE_NORTE=E7
+CELDAS_DESEMBARQUE_SUR=F7
 
-# ============================================================
-# BPPALS
-RUTA_DESEMBARQUE=Desembarque {ANIO} industr para inf final EDAD.xlsx
-SALIDA_BPPALS_MACHOS={DIRECTORIO_TABLAS}/BPPALSM{ANIO}_generado.xlsx
-SALIDA_BPPALS_HEMBRAS={DIRECTORIO_TABLAS}/BPPALSH{ANIO}_generado.xlsx
-TALLA_MIN=35
-TALLA_MAX=249
-PASO_TALLA=5
-EDAD_MIN=4
-EDAD_MAX=40
+[MERLUZA ARTESANAL]
+ARCHIVO_RESUMEN=inputs_MS/Input_1_Frecuencia ponderada/Artesanal/E_Resumen.DBF
+ARCHIVO_TALLAS=inputs_MS/Input_1_Frecuencia ponderada/Artesanal/EB_Estructura_de_Tallas.DBF
+ARCHIVO_SEXUAL=inputs_MS/Input_1_Frecuencia ponderada/Artesanal/EB_Proporción_Sexual.DBF
+CELDAS_DESEMBARQUE_NORTE=C2
+CELDAS_DESEMBARQUE_SUR=C3
+
+[BACALAO ARCHIVOS]
+ARCHIVO_TALLA_EDAD=inputs_BP/Unido_Bacalao_de_profundidad_{ANIO}.xlsx
+ARCHIVO_PESO_LONGITUD=inputs_BP/Palangre_{ANIO}.xlsx
+ARCHIVO_DESEMBARQUE_INDUSTRIAL=inputs_BP/Desembarque {ANIO} industr para inf final EDAD.xlsx
+HOJA_DESEMBARQUE_INDUSTRIAL=Sernapesca {ANIO} para edad
+
+[BACALAO PALANGRE]
+ARCHIVO_RESUMEN=inputs_BP/E_Resumen.DBF
+ARCHIVO_TALLAS=inputs_BP/ET_Estructura_de_Tallas.DBF
+ARCHIVO_SEXUAL=inputs_BP/ET_Proporción_Sexual.DBF
+CELDAS_DESEMBARQUE=E85
