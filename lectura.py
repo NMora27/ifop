@@ -1,9 +1,24 @@
 import re
+import json
 import unicodedata
+from collections.abc import Mapping
 from pathlib import Path
 
 import pandas as pd
+import numpy as np
 from openpyxl import load_workbook
+
+
+def leer_perfil(archivo):
+    """Acepta parámetros en memoria o un JSON de los controladores anteriores."""
+    if isinstance(archivo, Mapping):
+        perfil = dict(archivo)
+        base = Path(perfil.get('base', '.')).resolve()
+    else:
+        archivo = Path(archivo).resolve()
+        perfil = json.loads(archivo.read_text(encoding='utf-8-sig'))
+        base = (archivo.parent / perfil.get('base', '.')).resolve()
+    return perfil, base
 
 
 # ============================================================
@@ -75,20 +90,116 @@ def leer_dbf(ruta, encoding=None):
     datos = pd.DataFrame(iter(tabla))
     datos.columns = [col.strip().upper().replace(" ", "_") for col in datos.columns]
 
-    for col in datos.select_dtypes(include=["object"]).columns:
-        datos[col] = datos[col].astype(str).str.strip()
-
-    for col in datos.columns:
-        if col not in ("PERIODO", "ESCALA", "AGRUPACION"):
+    # Conservar códigos y textos: nunca convertir indiscriminadamente a números.
+    for col in datos.select_dtypes(include=["object", "string"]).columns:
+        datos[col] = datos[col].map(lambda v: v.strip() if isinstance(v, str) else v)
+    for col in ("PESQUERIA", "ESPECIE", "SEXO", "MES", "TALLA",
+                "PROPORCION", "EJEMP_LONG"):
+        if col in datos:
             datos[col] = pd.to_numeric(datos[col], errors="coerce")
-
     return datos
+
+def leer_fuentes(fuentes, *, base=".", especie=None, anio=None):
+    """Lee fuentes explícitas, sin descubrir hojas ni mezclar flotas implícitamente.
+
+    Cada fuente declara archivo, flota y opcionalmente hojas y encoding.
+    Con especie y año, identifica la hoja Excel por especie, flota y año.
+    Devuelve los valores originales junto con archivo, hoja y fila de origen.
+    """
+    tablas = []
+    vistas = set()
+    for fuente in fuentes:
+        ruta = Path(base) / fuente["archivo"]
+        flota = fuente["flota"]
+        if not flota:
+            raise ValueError("Cada fuente debe declarar su flota")
+        extension = ruta.suffix.lower()
+        hojas = fuente.get("hojas")
+        if extension in (".xlsx", ".xlsm"):
+            if especie is not None and anio is not None:
+                with pd.ExcelFile(ruta) as libro:
+                    hojas = [seleccionar_hoja_regresion(
+                        libro.sheet_names, especie=especie, flota=flota, anio=anio)]
+            elif not hojas:
+                raise ValueError(f"Debe indicar las hojas de {ruta}")
+        if extension not in (".dbf", ".xlsx", ".xlsm", ".csv"):
+            raise ValueError(f"Formato no admitido: {ruta}")
+        for hoja in hojas if extension in (".xlsx", ".xlsm") else [None]:
+            clave = (str(ruta.resolve()), hoja)
+            if clave in vistas:
+                raise ValueError(f"Fuente repetida: {ruta}, hoja {hoja}")
+            vistas.add(clave)
+            if extension == ".dbf":
+                tabla = leer_dbf(ruta, fuente.get("encoding"))
+            elif extension == ".csv":
+                tabla = pd.read_csv(ruta, sep=fuente.get("separador", ";"),
+                                    encoding=fuente.get("encoding") or detectar_encoding_csv(ruta))
+            else:
+                tabla = pd.read_excel(ruta, sheet_name=hoja)
+            tabla = tabla.rename(columns=fuente.get("columnas", {}))
+            reservadas = {"ORIGEN_ARCHIVO","ORIGEN_HOJA","ORIGEN_FILA","FLOTA"}
+            if reservadas.intersection(tabla.columns):
+                raise ValueError(f"Columnas reservadas presentes en {ruta}")
+            tabla["ORIGEN_ARCHIVO"] = str(ruta.resolve())
+            tabla["ORIGEN_HOJA"] = hoja if hoja is not None else ""
+            # DBF: posición entre registros activos; Excel/CSV: fila tras encabezado.
+            tabla["ORIGEN_FILA"] = range(1 if extension == ".dbf" else 2,
+                                          len(tabla)+(1 if extension == ".dbf" else 2))
+            tabla["FLOTA"] = flota
+            tablas.append(tabla)
+    if not tablas:
+        raise ValueError("No se configuraron fuentes")
+    return pd.concat(tablas, ignore_index=True)
+
 
 def extraer_tokens(valor):
     texto = unicodedata.normalize("NFD", str(valor).upper())
     texto = "".join(caracter for caracter in texto
                     if unicodedata.category(caracter) != "Mn")
     return re.findall(r"[A-Z]+|\d+", texto)
+
+def seleccionar_hoja_regresion(hojas, *, especie, flota, anio):
+    """Selecciona por Sp<código> o <código><flota>Sp y año de dos dígitos.
+
+    Ignora mayúsculas, tildes, separadores y orden. Los límites numéricos
+    evitan confundir Sp2 con Sp20 o el año 25 con 125.
+    """
+    def normalizar(valor):
+        return "".join(extraer_tokens(valor))
+
+    codigo = normalizar(especie)
+    if codigo.startswith("SP"):
+        codigo = codigo[2:]
+    if not codigo.isdigit():
+        raise ValueError(f"Código de especie inválido: {especie}")
+    flota_n = normalizar(flota)
+    marcas = {"ARRASTRE": "ARR", "ARR": "ARR",
+              "PALANGRE": "PAL", "PAL": "PAL",
+              "ARTESANAL": "ART", "ART": "ART"}
+    if flota_n not in marcas:
+        raise ValueError(f"Flota de regresión no reconocida: {flota}")
+    marca = marcas[flota_n]
+    patron_especie = rf"SP{codigo}(?![0-9])"
+    corto = str(anio)[-2:]
+    patron_anio = rf"(?<![0-9]){re.escape(corto)}(?![0-9])"
+    candidatas = []
+    for hoja in hojas:
+        nombre = normalizar(hoja)
+        coincidencia = (re.search(patron_especie, nombre) or
+                        re.search(rf'^{codigo}(?={marca}SP[0-9])', nombre))
+        if coincidencia:
+            # El número de especie no debe servir también como año.
+            resto = nombre[:coincidencia.start()] + " " + nombre[coincidencia.end():]
+            if marca in resto and re.search(patron_anio, resto):
+                candidatas.append(hoja)
+    criterio = f"Sp{codigo}, {marca} y {corto}"
+    if not candidatas:
+        raise ValueError(f"No se encontró una hoja con {criterio}. "
+                         f"Hojas disponibles: {', '.join(hojas)}")
+    if len(candidatas) > 1:
+        raise ValueError(f"Varias hojas coinciden con {criterio}: {', '.join(candidatas)}")
+    return candidatas[0]
+
 
 def validar_archivo_palangre(archivo, anio):
     archivo = Path(archivo)
@@ -106,26 +217,10 @@ def validar_archivo_palangre(archivo, anio):
 
 def leer_excel_palangre(archivo, columnas, especie, anio):
     archivo = validar_archivo_palangre(archivo, anio)
-    codigo_especie = str(especie)
-    anio_corto = str(anio)[-2:]
-
     with pd.ExcelFile(archivo) as libro:
-        hojas = [hoja for hoja in libro.sheet_names
-                 if codigo_especie in hoja.upper()
-                 and "PAL" in hoja.upper()
-                 and anio_corto in hoja]
-
-        if not hojas:
-            disponibles = ", ".join(libro.sheet_names)
-            raise ValueError(
-                f"No se encontró una hoja con {codigo_especie}, Pal y {anio_corto} "
-                f"en {archivo.name}. Hojas disponibles: {disponibles}")
-        if len(hojas) > 1:
-            raise ValueError(
-                f"Se encontraron varias hojas Palangre para especie {codigo_especie}: "
-                f"{', '.join(hojas)}")
-
-        datos = pd.read_excel(libro, sheet_name=hojas[0])
+        hoja = seleccionar_hoja_regresion(
+            libro.sheet_names, especie=especie, flota="Palangre", anio=anio)
+        datos = pd.read_excel(libro, sheet_name=hoja)
 
     n_original = len(datos)
     datos = datos[columnas].copy()
@@ -133,14 +228,30 @@ def leer_excel_palangre(archivo, columnas, especie, anio):
     datos["PESO_ESPECIMEN"] = datos["PESO_ESPECIMEN"].astype(float)
     return datos, n_original
 
-def leer_datos_talla_edad(archivo, columnas=None, *, anio=None, especie=None, zona=None):
-    """Lee el formato histórico o normaliza el estándar utilizado desde 2026."""
-    datos = pd.read_excel(archivo)
-    if anio is not None and int(anio) >= 2026:
+def leer_datos_talla_edad(archivo, columnas=None, *, anio=None, especie=None, zona=None,
+                          columna_edad=None, hoja=0, columna_especie="ESPECIE",
+                          valor_especie=None, puerto=None):
+    """Lee históricos y el estándar; bacalao lo reconoce por columnas en cualquier año."""
+    datos = pd.read_excel(archivo, sheet_name=hoja)
+    columnas_estandar = {'ANIO_MUESTRO', 'COS_ESPECIE', 'ZONA', 'LONGITUD_ESPECIMEN', 'EDAD'}
+    estandar_bacalao = especie == 37 and columnas_estandar.issubset({str(c).strip().upper() for c in datos.columns})
+    if estandar_bacalao:
+        datos = datos.rename(columns={c: str(c).strip().upper() for c in datos.columns})
+    if puerto is not None:
+        if "PUERTO" not in datos:
+            raise ValueError("Falta columna PUERTO para filtrar talla-edad")
+        codigos = pd.to_numeric(pd.Series(puerto if isinstance(puerto, (list, tuple)) else [puerto]),
+                                errors="coerce")
+        if codigos.empty or not (np.isfinite(codigos) & codigos.mod(1).eq(0)).all():
+            raise ValueError("Los códigos de PUERTO deben ser enteros y no estar vacíos")
+        datos = datos[pd.to_numeric(datos["PUERTO"], errors="coerce").isin(codigos)].copy()
+    if estandar_bacalao or anio is not None and int(anio) >= 2026:
         if especie is None:
             raise ValueError("Debe indicar ESPECIE_CODIGO para la matriz desde 2026")
         especie = int(especie)
-        if especie in (37, 27, 54):
+        if columna_edad is not None:
+            pass
+        elif especie in (37, 27, 54):
             columna_edad = "EDAD"
         elif especie in (1, 2, 3, 4, 6):
             columna_edad = "EDAD_CRONOLOGICA"
@@ -148,9 +259,11 @@ def leer_datos_talla_edad(archivo, columnas=None, *, anio=None, especie=None, zo
             raise ValueError(f"No está definida la columna de edad para la especie {especie}")
         requeridas = ["ANIO_MUESTRO", "COS_ESPECIE", "ZONA", "LONGITUD_ESPECIMEN",
                       columna_edad, "SEXO"]
+        if puerto is not None:
+            requeridas.append("PUERTO")
         faltantes = [col for col in requeridas if col not in datos.columns]
         if faltantes:
-            raise ValueError(f"Faltan columnas del formato talla-edad desde 2026: {', '.join(faltantes)}")
+            raise ValueError(f"Faltan columnas del formato talla-edad estándar: {', '.join(faltantes)}")
         datos = datos[requeridas].copy()
         for col in requeridas:
             if col != "ZONA":
@@ -168,10 +281,41 @@ def leer_datos_talla_edad(archivo, columnas=None, *, anio=None, especie=None, zo
             datos = datos[filtro].copy()
         datos = datos.rename(columns={"LONGITUD_ESPECIMEN": "LONGITUD_DEL_PEZ_(CM)",
                                       columna_edad: "Nº_DE_ANILLOS"})
-        return datos[["LONGITUD_DEL_PEZ_(CM)", "Nº_DE_ANILLOS", "SEXO"]].dropna()
+        salida = ["LONGITUD_DEL_PEZ_(CM)", "Nº_DE_ANILLOS", "SEXO"]
+        if puerto is not None:
+            salida.append("PUERTO")
+        return datos[salida].dropna()
 
-    columnas = columnas or ["LONGITUD_DEL_PEZ_(CM)", "Nº_DE_ANILLOS",
-                            "CÓDIGO_DE_PESQUERÍA", "SEXO"]
+    if especie is not None or valor_especie is not None:
+        if columna_especie not in datos:
+            raise ValueError(f"Falta columna de especie: {columna_especie}")
+        objetivo = valor_especie if valor_especie is not None else especie
+        numero = pd.to_numeric(objetivo, errors="coerce")
+        if pd.notna(numero):
+            filtro = pd.to_numeric(datos[columna_especie], errors="coerce").eq(numero)
+        else:
+            texto = str(objetivo).strip().casefold()
+            if not texto:
+                raise ValueError("El valor de especie no puede estar vacío")
+            filtro = datos[columna_especie].astype("string").str.strip().str.casefold().eq(texto).fillna(False)
+        datos = datos[filtro].copy()
+        if datos.empty and puerto is None:
+            raise ValueError(f"No hay registros para la especie {objetivo!r} en {columna_especie}")
+
+    if zona is not None and str(zona).strip():
+        if "ZONA" not in datos:
+            raise ValueError("Falta columna ZONA para filtrar talla-edad")
+        valor = pd.to_numeric(str(zona).strip(), errors="coerce")
+        filtro = (pd.to_numeric(datos["ZONA"], errors="coerce").eq(valor)
+                  if pd.notna(valor) else datos["ZONA"].astype(str).str.strip().eq(str(zona).strip()))
+        datos = datos[filtro].copy()
+    if columna_edad and columna_edad != "Nº_DE_ANILLOS":
+        if columna_edad not in datos:
+            raise ValueError(f"Falta columna de edad: {columna_edad}")
+        datos = datos.drop(columns=["Nº_DE_ANILLOS"], errors="ignore").rename(
+            columns={columna_edad: "Nº_DE_ANILLOS"})
+    columnas = list(columnas) if columnas else ["LONGITUD_DEL_PEZ_(CM)", "Nº_DE_ANILLOS", "SEXO"] + (
+        ["CÓDIGO_DE_PESQUERÍA"] if puerto is None else ["PUERTO"])
     faltantes = [col for col in columnas if col not in datos.columns]
     if faltantes:
         raise ValueError(f"Faltan columnas del formato talla-edad histórico: {', '.join(faltantes)}")

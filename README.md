@@ -1,14 +1,20 @@
 # Automatización Procesamiento de Datos de Edad y Crecimiento — IFOP
+# USO EXCLUSIVO PARA LOS DATOS DEL 2024
 
 Herramienta en Python para automatizar el procesamiento de datos de bacalao de profundidad. El programa genera el análisis COLOCAP, regresiones longitud–peso, matrices talla–edad y libros BPPALS, sin depender de una plantilla BPPALS externa.
 
 La versión actual está configurada para bacalao de profundidad, pero los parámetros principales se modifican desde `configuracion.txt`.
 
-## Descargar ejecutable para Windows
+## Ejecutable Windows
 
-[Descargar Consolidado_IFOP.zip](https://github.com/NMora27/ifop/releases/download/v1.0.0/Consolidado_IFOP.zip)
+El flujo `.github/workflows/compilar-windows.yml` permite compilar la rama
+seleccionada desde GitHub Actions (`workflow_dispatch`). Descargue el paquete,
+descomprímalo y coloque las fuentes 2024 junto al ejecutable y
+`configuracion.txt`; ejecute `Ejecutar_IFOP.bat`. La configuración se busca
+junto al ejecutable, también con PyInstaller.
 
-Incluye el ejecutable, `configuracion.txt` y `Ejecutar_IFOP.bat`. Descomprima el ZIP, ajuste la configuración y coloque los archivos de entrada en la misma carpeta antes de ejecutar `Ejecutar_IFOP.bat`.
+Esta rama requiere exclusivamente las fuentes 2024 descritas abajo; cambiar
+`ANIO` no habilita los formatos de 2025/2026.
 
 ## Flujo de trabajo
 
@@ -17,7 +23,7 @@ Incluye el ejecutable, `configuracion.txt` y `Ejecutar_IFOP.bat`. Descomprima el
 3. Calcula regresiones longitud–peso para machos, hembras y ambos sexos.
 4. Aplica los métodos Cook, MAD e IQR como comparación de limpieza.
 5. Genera gráficos de regresión y archivos de respaldo.
-6. Crea matrices talla–edad depuradas mediante IQR.
+6. Crea matrices talla–edad depuradas mediante MAD.
 7. Construye el libro BPPALS para el sexo seleccionado.
 
 ## Requisitos
@@ -39,7 +45,7 @@ ifop/
 ├── main.py
 ├── configuracion.txt
 ├── analisis_colocap.py
-├── regresion_bacalao.py
+├── regresion.py
 ├── clave_pesotalla.py
 ├── bppals_20XX.py
 ├── lectura.py
@@ -47,9 +53,9 @@ ifop/
 ├── E_Resumen.DBF
 ├── ET_Estructura_de_Tallas.DBF
 ├── ET_Proporción_Sexual.DBF
-├── Palangre_2025.csv
-├── Unido_Bacalao_de_profundidad_2025.xlsx
-└── Desembarque 2025 industr para inf final EDAD.xlsx
+├── Biologico_Palangre2024.xlsx
+├── Unido_Bacalao_de_Pofundidad_2024.xlsx
+└── Desembarque 2024 industr para inf final EDAD.xlsx
 ```
 
 Las carpetas `Tablas/` y `Graficos/` se crean automáticamente durante la ejecución.
@@ -61,31 +67,31 @@ Las carpetas `Tablas/` y `Graficos/` se crean automáticamente durante la ejecuc
 | `E_Resumen.DBF` | Obtiene el número de ejemplares para el análisis COLOCAP. |
 | `ET_Estructura_de_Tallas.DBF` | Obtiene proporciones de talla por sexo. |
 | `ET_Proporción_Sexual.DBF` | Obtiene la proporción de machos y hembras. |
-| `Palangre_{AÑO}.csv` | Datos para la regresión longitud–peso. |
-| `Unido_Bacalao_de_profundidad_{AÑO}.xlsx` | Datos para construir la matriz talla–edad. |
+| `Biologico_Palangre2024.xlsx` | Datos para la regresión longitud–peso. |
+| `Unido_Bacalao_de_Pofundidad_2024.xlsx` | Datos para construir la matriz talla–edad. |
 | `Desembarque {AÑO} industr para inf final EDAD.xlsx` | Obtiene el desembarque utilizado en BPPALS. |
 
 Los nombres de los archivos deben coincidir con los definidos en `configuracion.txt`.
 
 ### Columnas requeridas
 
-El archivo `Palangre_{AÑO}.csv` debe contener, al menos, las siguientes columnas:
+La hoja `Sp37-Pal-24` de `Biologico_Palangre2024.xlsx` debe contener, al menos, las siguientes columnas:
 
 ```text
 LATITUD
-ESPECIE_OBJETIVO_LANCE
+COD_ESPECIE
 SEXO_ESPECIMEN
 LONGITUD_ESPECIMEN
 PESO_ESPECIMEN
 ```
 
-El archivo `Unido_Bacalao_de_profundidad_{AÑO}.xlsx` debe contener:
+La hoja `Clave Edad-Talla` de `Unido_Bacalao_de_Pofundidad_2024.xlsx` debe contener:
 
 ```text
-LONGITUD_DEL_PEZ_(CM)
-Nº_DE_ANILLOS
-CÓDIGO_DE_PESQUERÍA
-SEXO
+Longitud
+N°Anillos
+Pesqueria
+Sexo
 ```
 
 Los archivos DBF deben conservar las columnas utilizadas por el proceso, tales como `AGRUPACION`, `ESCALA`, `ESPECIE`, `SEXO`, `TALLA`, `PROPORCION` y `EJEMP_LONG`, según corresponda.
@@ -97,7 +103,7 @@ Antes de ejecutar el programa, abra `configuracion.txt` y modifique los parámet
 Ejemplo:
 
 ```text
-ANIO=2025
+ANIO=2024
 ESPECIE=BACALAO DE PROFUNDIDAD
 ESPECIE_CODIGO=37
 SEXO=Machos
@@ -147,12 +153,7 @@ En sistemas donde Python se ejecuta como `python3`:
 ```bash
 python3 main.py
 ```
-
-Al finalizar correctamente se mostrará el mensaje:
-
-```text
-[ PROCESO FINALIZADO ]
-```
+La terminal mostrará `Archivo generado: ...` por cada salida creada.
 
 ## Resultados generados
 
@@ -169,16 +170,17 @@ Ambos exportan `a`, `b` y `r²` con 7 decimales como máximo. El Excel muestra
 | `resultados_comparación_regresiones.csv` | Parámetros `a`, `b`, `r_PEARSON`, `r²`, registros utilizados y eliminados para cada método. |
 | `resultados_regresiones.xlsx` | Tabla con `a`, `b`, `r²` y `N` para machos, hembras y ambos, e intervalos de confianza del 95 % de `a` y `b`. Hojas Original, Cook, MAD e IQR. |
 | `bacalao_filtrado.csv` | Datos de palangre filtrados durante el preprocesamiento. |
-| `bacalao_filtrado_iqr.csv` | Datos de ambos sexos filtrados mediante IQR. |
-| `bacalao_machos_filtrado_iqr.csv` | Datos de machos filtrados mediante IQR. |
-| `bacalao_hembras_filtrado_iqr.csv` | Datos de hembras filtrados mediante IQR. |
+| `bacalao_filtrado_mad.csv` | Datos de ambos sexos filtrados mediante MAD. |
+| `bacalao_machos_filtrado_mad.csv` | Datos de machos filtrados mediante MAD. |
+| `bacalao_hembras_filtrado_mad.csv` | Datos de hembras filtrados mediante MAD. |
 | `matriz_talla_edad_pesqueria25.xlsx` | Matrices talla–edad depuradas, separadas en hojas de Machos y Hembras. |
 | `BPPALSM{AÑO}_generado.xlsx` | Libro BPPALS generado cuando `SEXO=Machos`. |
 | `BPPALSH{AÑO}_generado.xlsx` | Libro BPPALS generado cuando `SEXO=Hembras`. |
 
 ### Carpeta `Graficos/`
 
-Se generan gráficos de dispersión y curvas longitud–peso para:
+Se genera una imagen por grupo, con cuatro paneles (Original, Cook, MAD e IQR),
+con gráficos de dispersión y curvas longitud–peso para:
 
 - Ambos sexos.
 - Machos.
@@ -204,41 +206,72 @@ donde:
 - `L` corresponde a la longitud.
 - `a` y `b` son los parámetros estimados.
 
-Los métodos Cook y MAD se generan como respaldo y comparación. El conjunto utilizado por BPPALS corresponde al filtrado mediante IQR.
+Los métodos Cook e IQR se generan como respaldo y comparación. El conjunto utilizado por BPPALS corresponde al filtrado mediante MAD (umbral 3).
 
 ### Matriz talla–edad
 
-El mismo flujo admite dos formatos según `ANIO` en `configuracion.txt`:
-
-- Hasta 2025: columnas `LONGITUD_DEL_PEZ_(CM)`, `Nº_DE_ANILLOS`,
-  `CÓDIGO_DE_PESQUERÍA` y `SEXO`, con filtro `PESQUERIA_TALLA_EDAD`.
-- Desde 2026: columnas `ANIO_MUESTRO`, `COS_ESPECIE`, `ZONA`,
-  `LONGITUD_ESPECIMEN`, `SEXO` y la columna de edad correspondiente.
-  Se filtra por `ANIO` y `ESPECIE_CODIGO`. Se utiliza `EDAD` para los códigos
-  37, 27 y 54, o `EDAD_CRONOLOGICA` para 1, 2, 3, 4 y 6.
-  Solo se exige la columna de edad correspondiente a la especie seleccionada.
-  Los códigos sin correspondencia definida generan un error explicativo.
-
-Para 2026 y años posteriores, ajustar `ANIO`, `ARCHIVO_TALLA_EDAD` y, si
-corresponde, `ESPECIE_CODIGO`. `ZONA_TALLA_EDAD` permite seleccionar una zona;
-vacío incluye todas. Este valor es independiente de `ZONA`, que describe la
-pesquería para BPPALS. El formato nuevo no tiene columna de pesquería, por lo
-que `PESQUERIA_TALLA_EDAD` solo se aplica al formato histórico. Los nombres de
-columnas se esperan tal como están indicados, incluidos `ANIO_MUESTRO` y
-`COS_ESPECIE`. La lectura utiliza la primera hoja del Excel.
-
-Esta compatibilidad corresponde a la matriz talla–edad; el resto del flujo
-mantiene sus propios formatos de entrada y reglas para bacalao de profundidad.
+La matriz usa la hoja `Clave Edad-Talla`, filtra `Pesqueria=Industrial` y
+separa machos (`Sexo=1`) y hembras (`Sexo=2`).
 
 La matriz talla–edad utiliza los siguientes criterios:
 
-- Selección según los filtros del formato correspondiente.
 - Sexo 1 para machos y 2 para hembras.
 - Se excluyen edades iguales o menores que cero, o datos de edad/talla no válidos.
 - Se excluyen longitudes iguales o menores que cero.
 - Las tallas se agrupan según `PASO_TALLA_MATRIZ`.
 - Las edades iguales o superiores a `EDAD_AGRUPADA` se agrupan como `40+`.
-- Se aplica limpieza IQR por sexo y grupo etario.
+- Se aplica limpieza MAD por sexo y grupo etario (umbral 3).
+- Se incluyen las clases definidas por `TALLA_MIN_MATRIZ` y `TALLA_MAX_MATRIZ`, incluso sin observaciones.
+
+### Consulta de edad por talla
+
+Las funciones `cargar_clave()` y `asignar_edad()` están en
+`metodos_matematicos.py`. Consultan `claves_edad.py`, una clave estática
+con frecuencias y probabilidades históricas de `UNIDO_2007-2024.xlsx`,
+hoja `2007-2024`, pesquería 25 / Industrial y sexos conocidos 1 y 2.
+La consulta no requiere los Excel ni ejecutar `main.py` previamente.
+Esta clave histórica conserva edades individuales de 1 a 100 años,
+sin agrupación `40+`, suavizado ni limpieza IQR adicional.
+
+```python
+from metodos_matematicos import cargar_clave, asignar_edad
+
+resultado = asignar_edad(123, sexo="hembra")
+print(resultado["edad_asignada"], resultado["opciones"])
+
+clave = cargar_clave()  # suma frecuencias de ambos sexos
+resultado_ambos = asignar_edad(123, clave=clave)
+```
+
+No combinar `clave` y `sexo`. Se entregan hasta tres opciones con
+probabilidades calculadas sobre el total de la clase; los empates se
+informan y se resuelven por edad ascendente. Las reglas fijas son
+`(0,25) → 2`, `[25,35) → 3`, `[35,40] → 4` y `>245 → 37` años.
+Estas reglas tienen `origen="regla_fija"`, probabilidad 1 por decisión
+explícita y frecuencias `None`. Fuera de las reglas, una clase sin
+observaciones produce `ValueError`.
+
+### BPPALS
+
+El libro conserva las ocho hojas y el diseño 2025 utilizado en `main`,
+incluidos gráficos, estilos, fórmulas y configuración de impresión.
+El rango BPPALS configurado es 35–249 cm, con paso de 5 cm. En la hoja
+`Clave`, la columna `VERIFICACIÓN` informa `CL OK` cuando una clase con captura
+tiene datos de clave, o `FALTA CL` cuando no los tiene. El encabezado está
+en `A74` y las fórmulas desde `A75` consultan `Colocap!C` para Machos
+y `Colocap!D` para Hembras.
+
+Como en `main`, las clases con captura positiva sin edades se completan con
+un **1 en rojo** en la edad más probable de la clave histórica industrial.
+Es una asignación estimada, no una muestra observada. Las filas con datos
+observados se conservan; si no hay referencia válida se emite un aviso.
+Excel recalcula las fórmulas al abrir el libro.
+
+La matriz superior de `Clave` calcula la probabilidad de pertenencia a cada
+edad dividiendo su frecuencia por el total de la clase de talla.
+En `Graf.`, `D4:D40` conserva los porcentajes de C mayores o iguales a 5
+(incluido exactamente 5 %); `D41` suma esos valores. C utiliza la escala
+0–100. El formato condicional resalta los valores seleccionados en amarillo.
 
 ## Problemas frecuentes
 
@@ -294,20 +327,3 @@ Confirme que:
 Versión inicial integrada de la automatización para análisis de edad y crecimiento.
 
 ---
-
-### Completar FALTA CL en BPPALS
-
-Después de construir la clave se comprueba la misma condición que usa
-VERIFICACIÓN: captura positiva para el sexo y talla, y suma de edades cero.
-Se agrega **1 en rojo** en la edad más probable según la clave histórica
-industrial de `analisis_talla-edad.zip`, por sexo. Este conteo es estimado;
-no representa la diferencia entre el número de capturas y muestras.
-Las filas con edades observadas se conservan.
-
-`asignar_edad` y `cargar_clave` están en `metodos_matematicos.py`; las
-frecuencias originales y reglas fijas están en `claves_edad.py`.
-Se consulta el punto medio del intervalo de talla. Los empates se resuelven
-por la menor edad. Las edades superiores al máximo se agrupan en la última
-columna. Si no existe referencia o la edad queda por debajo del mínimo,
-se emite un aviso y la fila continúa pendiente. Las asignaciones se informan
-en consola y VERIFICACIÓN se recalcula al abrir el libro en Excel.
