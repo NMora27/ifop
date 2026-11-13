@@ -379,7 +379,7 @@ class LibroComposicion:
 
     def guardar(self, salida, n, k):
         """Conserva dibujos/impresión originales y actualiza datos y cachés de gráficos."""
-        with NamedTemporaryFile(suffix='.xlsx') as temporal:
+        with NamedTemporaryFile(suffix='.xlsx', delete_on_close=False) as temporal:
             self.wb.save(temporal.name)
             with ZipFile(BytesIO(self.original)) as base, ZipFile(temporal.name) as nuevo, \
                     ZipFile(salida, 'w', ZIP_DEFLATED) as destino:
