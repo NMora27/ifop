@@ -48,12 +48,12 @@ jobs:
       - name: Instalar dependencias
         run: |
           python -m pip install --upgrade pip
-          python -m pip install numpy pandas scipy openpyxl matplotlib dbfread pyinstaller
+          python -m pip install numpy pandas scipy openpyxl xlsxwriter matplotlib dbfread pyinstaller
 
       - name: Crear ejecutable con las plantillas incluidas
         shell: pwsh
         run: |
-          python -m PyInstaller --noconfirm --clean --onefile --console --name Consolidado_IFOP --add-data "plantillas_composicion:plantillas_composicion" main.py
+          python -m PyInstaller --noconfirm --clean --onefile --console --name Consolidado_IFOP --hidden-import xlsxwriter --add-data "plantillas_composicion:plantillas_composicion" main.py
           if ($LASTEXITCODE -ne 0) {
             throw "Falló la creación del ejecutable."
           }
