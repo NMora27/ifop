@@ -2,7 +2,6 @@
 import configparser
 import re
 from pathlib import Path
-
 ETAPAS = {
     'EJECUTAR_COLOCAP': 'COLOCAP',
     'EJECUTAR_REGRESIONES': 'Regresiones longitud–peso',
@@ -18,12 +17,10 @@ NOMBRES_COMPOSICION = {'arrastre': ('MSAZN', 'MSAZS'),
                        'palangre': ('MSPALZN', 'MSPALZS'),
                        'artesanal': ('MSEIN', 'MSEIS')}
 
-
 def booleano(valor):
     if valor.upper() not in ('SI', 'SÍ', 'NO'):
         raise ValueError('se esperaba SI o NO')
     return valor.upper() != 'NO'
-
 
 def filtros_colocap(zona=None):
     agrupacion = 'Total Periodo' if zona is None else 'Total Pto_Zona'
@@ -34,7 +31,6 @@ def filtros_colocap(zona=None):
         proporciones['PTO_ZONA'] = str(zona)
     return dict(filtros_resumen=resumen, filtros_tallas=dict(proporciones),
                 filtros_sexual=dict(proporciones))
-
 
 def construir_procesos(nombre, codigo, especie, anio, tablas, archivos, artes):
     """Construye selecciones, reglas y destinos; no lee perfiles ni históricos."""
@@ -49,7 +45,6 @@ def construir_procesos(nombre, codigo, especie, anio, tablas, archivos, artes):
         directorio = directorio.with_name(f'{directorio.name} {nombre}')
     carpeta_claves = directorio / 'Clave_talla_edad'
     carpeta_regresiones = directorio / 'Regresiones' / f'{especie}_{anio}'
-
     def clave(id, pesqueria=None, puerto=None):
         parametros = dict(id=id, archivo=archivos['ARCHIVO_TALLA_EDAD'],
             salida=str(carpeta_claves / ('claves definitivas' if merluza else '') / f'{especie}_{anio}_{id}.xlsx'),
@@ -62,7 +57,6 @@ def construir_procesos(nombre, codigo, especie, anio, tablas, archivos, artes):
         if puerto is not None:
             parametros.update(puerto=puerto, mezcla_secuencial_minimo=500)
         perfil['talla_edad'].append(parametros)
-
     if merluza:
         clave('industrial_total', pesqueria=25)
         clave('artesanal_total', pesqueria=55)
@@ -85,10 +79,13 @@ def construir_procesos(nombre, codigo, especie, anio, tablas, archivos, artes):
         regresion = dict(id=arte, fuentes=[dict(archivo=archivos['ARCHIVO_PESO_LONGITUD'], flota=flota)],
             salida=str(carpeta_regresiones / flota), codigos_pesqueria=[pesqueria_reg] if merluza else None,
             columna_especie='COD_ESPECIE' if merluza else 'COS_ESPECIE',
-            columna_pesqueria='COD_PESQUERIA' if merluza else None, zonas_validas=[1, 2] if merluza else None,
+            columna_pesqueria='COD_PESQUERIA' if merluza else None,
+            zonas_validas=[1, 2] if merluza and arte != 'artesanal' else None,
             factor_longitud=1, factor_peso=1)
         if merluza:
-            regresion['columna_zona'] = 'ZONA'
+            # En Artesanal, ZONA=1/2 son subdivisiones del mismo dominio Norte.
+            # El ajuste Total reúne la muestra y se comparte con la matriz Sur.
+            regresion['columna_zona'] = None if arte == 'artesanal' else 'ZONA'
         else:
             regresion.update(columna_zona=None, columna_anio='ANIO_MUESTRO')
         perfil['regresiones'].append(regresion)
@@ -122,7 +119,8 @@ def construir_procesos(nombre, codigo, especie, anio, tablas, archivos, artes):
                     desembarque['verificar']['C7'] = 'Palangre Fábrica'
             composicion = dict(id=id, colocap_id=f'{arte}_zona{zona}' if merluza else 'palangre_total',
                 regresion_id=arte, clave_id=id if merluza else 'palangre_total',
-                dominio_regresion=f'Zona_{zona}' if merluza else 'Total', metodo_regresion='MAD',
+                dominio_regresion=f'Zona_{zona}' if merluza and not artesanal else 'Total',
+                metodo_regresion='MAD',
                 diseno=especie, zona='Zona '+sufijo.capitalize() if merluza else 'Total',
                 directorio_salida=str(directorio / 'Matriz_composicion'),
                 nombre_archivo=(NOMBRES_COMPOSICION[arte][zona-1]+'{sexo_sigla}{anio}.xlsx') if merluza else 'BPPALS{sexo_sigla}{anio}_generado.xlsx',
@@ -139,7 +137,6 @@ def construir_procesos(nombre, codigo, especie, anio, tablas, archivos, artes):
     perfil['tabla_regresiones'] = dict(metodo='Original', directorio_salida=str(carpeta_regresiones),
         nombre_archivo=f'peso_longitud_{especie}_{anio}', nombres_zonas={'Zona_1': 'Zona Norte', 'Zona_2': 'Zona Sur'})
     return perfil
-
 
 def leer_configuracion(archivo):
     archivo = Path(archivo).resolve()
@@ -189,7 +186,6 @@ def leer_configuracion(archivo):
     if not parser.has_section('GENERAL') or not parser.has_section('ARCHIVOS'):
         raise ValueError('Se necesitan los bloques GENERAL y ARCHIVOS')
     variables = {**parser['GENERAL'], **parser['ARCHIVOS']}
-
     def expandir(valor, cadena=()):
         def sustituir(m):
             clave = m[1]
@@ -199,13 +195,11 @@ def leer_configuracion(archivo):
                 raise ValueError('Referencia circular: ' + ' -> '.join((*cadena, clave)))
             return expandir(variables[clave], (*cadena, clave))
         return re.sub(r'\{([A-Za-z_][A-Za-z0-9_]*)\}', sustituir, valor)
-
     def requerido(bloque, clave):
         valor = expandir(parser[bloque].get(clave, '')).strip()
         if not valor:
             raise ValueError(f'[{bloque}] falta {clave}')
         return valor
-
     especie = requerido('GENERAL', 'ESPECIE').upper()
     if especie not in ESPECIES:
         raise ValueError('ESPECIE debe ser MERLUZA DEL SUR o BACALAO DE PROFUNDIDAD')
