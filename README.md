@@ -6,7 +6,7 @@ desembarque por edad. El usuario trabaja con un único `configuracion.txt`.
 
 ## Descargar ejecutable para Windows
 
-[Descargar Consolidado_IFOP.zip](https://github.com/NMora27/ifop/releases/download/v1.0.0/Consolidado_IFOP.zip)
+[Descargar Consolidado_IFOP.zip](https://github.com/NMora27/ifop/releases/download/v2.0.0/Consolidado_IFOP.zip)
 
 Incluye el ejecutable, `configuracion.txt` y `Ejecutar_IFOP.bat`. Descomprima el ZIP, ajuste la configuración y coloque los archivos de entrada en la misma carpeta antes de ejecutar `Ejecutar_IFOP.bat`.
 
